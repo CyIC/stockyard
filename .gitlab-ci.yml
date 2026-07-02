@@ -1,0 +1,56 @@
+# Initial CI/CD pipeline for Warren Bot (Python / Poetry)
+# Mirrors the tox envlist: flake8, pylint, pytest (py313).
+
+stages:
+  - lint
+  - test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/poetry"
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+
+# Shared setup: install Poetry and project deps, cached per-branch.
+.python:
+  image: python:3.13-slim
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths:
+      - .cache/pip
+      - .cache/poetry
+      - .venv
+  before_script:
+    - python -m pip install --upgrade pip poetry
+    - poetry install --no-interaction --no-ansi
+
+flake8:
+  extends: .python
+  stage: lint
+  script:
+    - poetry run flake8 --ignore=E501,D401 src/warren_bot setup.py
+
+pylint:
+  extends: .python
+  stage: lint
+  allow_failure: true
+  script:
+    - poetry run pylint src
+
+.pytest:
+  extends: .python
+  stage: test
+  script:
+    - poetry run pytest --cov=src/warren_bot --cov-report=term --cov-report=xml:coverage.xml
+      --junitxml=junit/report.xml src/tests/
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    when: always
+    reports:
+      junit: junit/report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+test:py313:
+  extends: .pytest
+  image: python:3.13-slim
