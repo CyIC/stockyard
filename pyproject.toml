@@ -10,18 +10,16 @@ repository = "https://github.com/CyIC/warren_bot"
 classifiers = [
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.13',
     'Development Status :: 2 - Pre-Alpha',
     'Operating System :: OS Independent',
     'Intended Audience :: Financial and Insurance Industry',
     'Topic :: Utilities',
     'Natural Language :: English',
-    'Project-URL :: https://github.com/CyIC/warren_bot'
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.13"
 discord = "^2.3.2"
 pandas = "^2.2.1"
 requests = "^2.31.0"
@@ -40,6 +38,7 @@ pytest-cov = "^4.1.0"
 flake8 = "^7.0.0"
 pylint = "^3.1.0"
 pep8-naming = "^0.13.3"
+tox = "^4.28"
 
 
 [tool.poetry.group.dev]
@@ -57,41 +56,69 @@ build-backend = "poetry.core.masonry.api"
 max-line-length = 120
 
 disable = [
-    "W0511",  # to-do tags
-    "C0209",  # consider-using-f-string
-    "R0914",  # too-many-locals
-    "R0915",  # too-many-statements
-    "C0302",  # too-many-lines
+    "W0511", # to-do tags
+    "C0209", # consider-using-f-string
+    "R0914", # too-many-locals
+    "R0915", # too-many-statements
+    "C0302", # too-many-lines
 ]
 
 [tool.black]
 line-length = 120
-target-version = ['py311']
+target-version = ['py313']
+
+[mypy]
+python_version = 3.11
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "discord.*",
+    "pandas.*",
+    "matplotlib.*",
+    "mplfinance.*",
+    "yfinance.*",
+    "prettytable.*",
+    "jinja2.*",
+]
+ignore_missing_imports = true
 
 [tool.bumpversion]
 current_version = "0.1.0"
-parse = "(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(-(?P<build>\d+))?"
+parse = '(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(-(?P<build>\d+))?'
 commit = true
 tag = true
 serialize = [
     "{major}.{minor}.{patch}-{build}",
     "{major}.{minor}.{patch}",
-    ]
+]
 
 [tool.bumpversion.part.build]
 independent = true
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "README.md"
 search = "v{current_version}"
 replace = "v{new_version}"
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "pyproject.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "CHANGELOG.md"
 search = "[Unreleased]"
 replace = "[{new_version}] - {now:%Y-%m-%d}"
