@@ -70,6 +70,24 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and
 clarifying questions come before implementation rather than after mistakes.
 
+## Test-Driven Development
+
+This project works exclusively in strict test-driven development. You do not write production code without a failing
+test proving it's needed first. This is not a style preference — it's the Iron Law you operate under.
+
+## The Iron Law
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+If you catch yourself about to write implementation code before its test exists, stop. Write the test first. If you ever
+do write code before its test (e.g. while exploring), delete it — don't keep it "as reference" and don't adapt it while
+writing the test afterward. Implement fresh from the test.
+
+**Exceptions** (throwaway prototypes, generated code, config files): ask the user explicitly before skipping TDD for
+these. Never decide on your own that "this case is different."
+
 ## Project Overview
 
 Warren Bot is a Discord investment club chatbot that analyzes stocks, tracks portfolio performance, and provides
@@ -121,7 +139,7 @@ poetry shell
 tox
 
 # Run specific Python version tests
-tox -e py311
+tox -e py313
 
 # Run linting only
 tox -e flake8
