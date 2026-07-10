@@ -7,12 +7,19 @@
 # matching docker-compose.secure.yml.
 # ======================================================================================
 
-# ------------------------------------------------------------------------------------------
-# BUILD STAGE — compile the project into a wheel
-# ------------------------------------------------------------------------------------------
-FROM chainguard/python:latest-dev AS builder
+# Base images as build args so they can be pinned to immutable digests in one place, e.g.:
+#   --build-arg PYTHON_DEV_IMAGE=chainguard/python@sha256:<dev-digest>
+#   --build-arg PYTHON_RUNTIME_IMAGE=chainguard/python@sha256:<runtime-digest>
+# builder/installer MUST match the runtime Python minor version, or the venv's compiled
+# wheels (numpy/pandas/scipy) won't import in the runtime stage. Pinning by digest guarantees
+# that and makes builds reproducible; the floating :latest defaults are convenient but not.
+ARG PYTHON_DEV_IMAGE=chainguard/python:latest-dev
+ARG PYTHON_RUNTIME_IMAGE=chainguard/python:latest
 
-ARG WARREN_VERSION="0.1.0"
+# ------------------------------------------------------------------------------------------
+# BUILD STAGE — export the locked deps and compile the project into a wheel
+# ------------------------------------------------------------------------------------------
+FROM ${PYTHON_DEV_IMAGE} AS builder
 
 # Reproducible, quiet, no-bytecode builds
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -23,7 +30,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Poetry pinned for reproducibility (root only for build tooling; stage is discarded)
+# Poetry pinned for reproducibility (root only for build tooling; stage is discarded).
 USER root
 RUN pip install --no-cache-dir poetry==2.1.0
 
@@ -38,9 +45,7 @@ RUN poetry build --format wheel
 # ------------------------------------------------------------------------------------------
 # INSTALLER STAGE — install the wheel into a self-contained virtualenv
 # ------------------------------------------------------------------------------------------
-FROM chainguard/python:latest-dev AS installer
-
-ARG WARREN_VERSION="0.1.0"
+FROM ${PYTHON_DEV_IMAGE} AS installer
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -51,18 +56,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 USER root
 WORKDIR /app
 
-# Build the venv and install only the wheel (no dev/build deps leak into runtime)
+# Build the venv and install the wheel. pip resolves the wheel's dependencies to current
+# wheels for this interpreter (cp313) — poetry's lock resolver backtracks this graph to
+# pre-3.13 versions that have no cp313 wheels, so pip's fresh resolution is used here.
+# The *.whl glob decouples this stage from the project version (no WARREN_VERSION coupling).
 RUN python -m venv --copies .venv
-COPY --from=builder /build/dist/warren_bot-${WARREN_VERSION}-py3-none-any.whl ./
-RUN pip install --no-cache-dir ./warren_bot-${WARREN_VERSION}-py3-none-any.whl \
-    && rm ./warren_bot-${WARREN_VERSION}-py3-none-any.whl \
-    && python -c "import warren_bot; print('Warren Bot installed successfully')" \
-    && chown -R nonroot:nonroot /app/.venv
+COPY --from=builder /build/dist/*.whl ./
+RUN pip install --no-cache-dir ./*.whl \
+    && rm ./*.whl \
+    && python -c "import warren_bot; print('Warren Bot installed successfully')"
 
 # ------------------------------------------------------------------------------------------
 # RUNTIME STAGE — distroless, non-root, no shell. Only COPY + metadata here.
 # ------------------------------------------------------------------------------------------
-FROM chainguard/python:latest AS runtime
+FROM ${PYTHON_RUNTIME_IMAGE} AS runtime
 
 ARG WARREN_VERSION="0.1.0"
 ARG BUILD_DATE
@@ -89,18 +96,26 @@ COPY --from=installer --chown=nonroot:nonroot /app/.venv /app/.venv
 
 # Minimal runtime environment. No PYTHONPATH: the venv on PATH resolves its own
 # site-packages, so this stays correct even if the base Python minor version changes.
+# WARREN_DATA_DIR is where the bot writes charts/pickles/reports (a writable mounted volume
+# on the read-only root); HOME and MPLCONFIGDIR point at tmpfs so matplotlib/yfinance caches
+# don't hit the read-only filesystem.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH" \
-    HOME="/app"
+    HOME="/tmp" \
+    MPLCONFIGDIR="/tmp" \
+    WARREN_DATA_DIR="/app/data"
 
 # Run as the Chainguard nonroot user (uid 65532; matches docker-compose.secure.yml)
 USER nonroot
 
-# Exec form so it works without a shell in the distroless image
-CMD ["python", "-m", "warren_bot"]
+# Run via the venv interpreter explicitly. The base image's ENTRYPOINT is the system python
+# (/usr/bin/python), which lacks the app; resetting ENTRYPOINT to the venv python ensures
+# `warren_bot` is importable. Exec form works without a shell in the distroless image.
+ENTRYPOINT ["/app/.venv/bin/python"]
+CMD ["-m", "warren_bot"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD ["python", "-c", "import warren_bot, sys; sys.exit(0)"]
+    CMD ["/app/.venv/bin/python", "-c", "import warren_bot, sys; sys.exit(0)"]
 
 STOPSIGNAL SIGTERM

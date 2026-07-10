@@ -57,7 +57,8 @@ services:
       - DEBUG_MODE=${DEBUG_MODE:-false}
       - CLUB_INFO_FILE=/app/config/club_info.json
       - CLUB_STOCKS_FILE=/app/config/club_stocks.csv
-      - PYTHONPATH=/app/.venv/lib/python3.13/site-packages
+      # PYTHONPATH intentionally omitted: the venv on PATH resolves its own site-packages,
+      # so this stays correct across Python minor-version changes (no hardcoded python3.13).
     
     # Security: Secrets management (Docker Swarm secrets)
     secrets:
@@ -101,7 +102,7 @@ services:
     
     # Security: Health check
     healthcheck:
-      test: [ "CMD", "python", "-c", "import warren_bot; import sys; sys.exit(0)" ]
+      test: [ "CMD", "/app/.venv/bin/python", "-c", "import warren_bot; import sys; sys.exit(0)" ]
       interval: 30s
       timeout: 10s
       retries: 3
