@@ -835,27 +835,30 @@ def risk_reward(
     daily_prices = daily_prices[daily_prices.index >= datetime.datetime.now() - relativedelta(years=5)]
     future_five_years = datetime.datetime.now() + relativedelta(years=5)
 
-    # Build EPS prediction
-    time = quarterly_eps.index.tolist()
-    # convert time to UNIX Epoch time for x values
-    eps_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), quarterly_eps["reportedEPS"], 1)
-    eps_pred = _predict_values(eps_prediction, time)
-    # Project a full year of earnings - the four quarters ending five years out - so the
-    # forecast shares the annual EPS basis pe_high is built on.
-    est_high_eps = sum(
-        eps_prediction((future_five_years - relativedelta(months=3 * quarter)).timestamp()) for quarter in range(4)
-    )
-    eps_pred = pd.Series(pd.to_numeric(eps_pred), index=pd.to_datetime(time))
-    # convert arrays to DataFrame for plotting
-    tmp_info = {"eps": quarterly_eps["reportedEPS"], "eps_pred": eps_pred}
-    quarterly_eps = pd.DataFrame(tmp_info, index=time)
-    quarterly_eps.index.name = "date"
-    quarterly_eps.index = pd.to_datetime(time)
-    quarterly_eps.sort_index(ascending=True, inplace=True)
-    quarterly_eps.plot()
-    eps_pred_fig_path = utils.data_path("eps_pred_fig.jpg")
-    plt.savefig(eps_pred_fig_path)
-    files.append(eps_pred_fig_path)
+    # Build EPS prediction from trailing twelve month earnings. Quarterly EPS is strongly
+    # seasonal, so fitting it raw reads the seasonal swing as a trend; TTM removes that and is
+    # already on the annual basis pe_high is built from. Needs 4 quarters per TTM point.
+    ttm_eps = quarterly_eps["reportedEPS"].rolling(4).sum().dropna()
+    est_high_eps = 0
+    if len(ttm_eps) >= 2:
+        time = ttm_eps.index.tolist()
+        # convert time to UNIX Epoch time for x values
+        eps_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), ttm_eps, 1)
+        est_high_eps = eps_prediction(future_five_years.timestamp())
+        eps_pred = pd.Series(pd.to_numeric(_predict_values(eps_prediction, time)), index=pd.to_datetime(time))
+        # convert arrays to DataFrame for plotting
+        tmp_info = {"ttm_eps": ttm_eps, "eps_pred": eps_pred}
+        ttm_frame = pd.DataFrame(tmp_info, index=time)
+        ttm_frame.index.name = "date"
+        ttm_frame.index = pd.to_datetime(time)
+        ttm_frame.sort_index(ascending=True, inplace=True)
+        ttm_frame.plot()
+        eps_pred_fig_path = utils.data_path("eps_pred_fig.jpg")
+        plt.savefig(eps_pred_fig_path)
+        files.append(eps_pred_fig_path)
+    # Extrapolating any declining series five years out eventually crosses zero, and a
+    # negative projection is not a price. Report the gap instead of quoting one.
+    has_forecast = est_high_eps > 0
     forcast_high = pe_high.mean() * est_high_eps
 
     # Build High Revenue Prediction
@@ -887,8 +890,12 @@ def risk_reward(
     #                                  pd.to_numeric(company_data['shares_outstanding'].iloc[-1]))
 
     # Build High Price Prediction
-    msg += f"""\n**HIGH PRICE - NEXT 5 YEARS**
+    if has_forecast:
+        msg += f"""\n**HIGH PRICE - NEXT 5 YEARS**
 ```Linear Regression of Highs: {forcast_high}```\n"""
+    else:
+        msg += """\n**HIGH PRICE - NEXT 5 YEARS**
+```The earnings trend does not support a five-year price projection.```\n"""
 
     # Build Low Price Predictions
     # Calculate linear regression low
@@ -947,37 +954,40 @@ def risk_reward(
 """.format(
         a=lr_low, b=avg_low, c=severe_low, d=price_dividend
     )
-    # Build Zoning
-    msg += "**ZONING**"
-    # Predict A
-    msg += "\n(a - Linear Regression)"
-    fragment, lr_low = _zone_analysis(forcast_high, lr_low, present_price)
-    msg += fragment
-    # Predict B
-    msg += "\n(b - Avg Low Price of Last 5 Years)"
-    fragment, avg_low = _zone_analysis(forcast_high, avg_low, present_price)
-    msg += fragment
-    # Predict C
-    msg += "\n(c - Recent Severe Market Low)"
-    fragment, severe_low = _zone_analysis(forcast_high, severe_low, present_price)
-    msg += fragment
-    # Predict D
-    msg += "\n(d - Price Dividend Support)"
-    fragment, dividend_low = _zone_analysis(forcast_high, price_dividend, present_price)
-    msg += fragment
-    # Build UP-SIDE DOWN-SIDE Ration
-    msg += """\n**UP-SIDE / DOWN-SIDE RATIO (Potential Gain vs Risk of Loss)**"""
-    msg += """```a) {lr_low:.4f} to 1
+    # Zoning and the price target are all measured against forcast_high, so they only mean
+    # anything when the earnings trend produced one.
+    if has_forecast:
+        # Build Zoning
+        msg += "**ZONING**"
+        # Predict A
+        msg += "\n(a - Linear Regression)"
+        fragment, lr_low = _zone_analysis(forcast_high, lr_low, present_price)
+        msg += fragment
+        # Predict B
+        msg += "\n(b - Avg Low Price of Last 5 Years)"
+        fragment, avg_low = _zone_analysis(forcast_high, avg_low, present_price)
+        msg += fragment
+        # Predict C
+        msg += "\n(c - Recent Severe Market Low)"
+        fragment, severe_low = _zone_analysis(forcast_high, severe_low, present_price)
+        msg += fragment
+        # Predict D
+        msg += "\n(d - Price Dividend Support)"
+        fragment, dividend_low = _zone_analysis(forcast_high, price_dividend, present_price)
+        msg += fragment
+        # Build UP-SIDE DOWN-SIDE Ration
+        msg += """\n**UP-SIDE / DOWN-SIDE RATIO (Potential Gain vs Risk of Loss)**"""
+        msg += """```a) {lr_low:.4f} to 1
 b) {avg_low:.4f} to 1
 c) {severe_low:.4f} to 1
 d) {dividend_low:.4f} to 1```""".format(
-        lr_low=lr_low, avg_low=avg_low, severe_low=severe_low, dividend_low=dividend_low
-    )
-    # TODO Build Price Targe
-    msg += """\n**PRICE TARGET**
+            lr_low=lr_low, avg_low=avg_low, severe_low=severe_low, dividend_low=dividend_low
+        )
+        # TODO Build Price Targe
+        msg += """\n**PRICE TARGET**
 ```${:,.2f} 5yr predicted stock price drives {:,.4f}% appreciation```""".format(
-        forcast_high, (forcast_high / present_price) * 100 - 100
-    )
+            forcast_high, (forcast_high / present_price) * 100 - 100
+        )
     return msg, files
 
 

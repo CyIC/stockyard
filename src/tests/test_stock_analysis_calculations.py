@@ -508,12 +508,14 @@ def test_cash_position_compares_short_term_debt_against_the_prior_year():
 # --------------------------------------------------------------------------------------
 # risk_reward
 # --------------------------------------------------------------------------------------
-def _risk_reward_args():
-    """Build a fixture whose EPS trend is flat, so the fitted projection is exactly 1.00/quarter.
+def _risk_reward_args(quarterly_values=None, annual_eps=4.0):
+    """Build a risk_reward fixture with hand-computable P/E inputs.
 
-    Yearly highs run 100..140 against a flat 4.00 annual EPS, making pe_high 25.0..35.0 with a
-    mean of exactly 30.0.
+    Yearly highs run 100..140 against a flat annual EPS, so pe_high is evenly spaced and its
+    mean is exact. Defaults give a flat 1.00/quarter EPS and a pe_high mean of 30.0.
     """
+    if quarterly_values is None:
+        quarterly_values = [1.0] * 8
     annual = _annual_index(5)
     years = [stamp.year for stamp in annual]
 
@@ -537,16 +539,16 @@ def _risk_reward_args():
         index=daily_index,
     )
 
-    quarterly_index = _quarterly_eps_fixture([0] * 8).index
+    quarterly = _quarterly_eps_fixture(quarterly_values)
     return {
         "daily_prices": daily_prices,
         "eps": {
-            "annualEarnings": pd.DataFrame({"reportedEPS": [4.0] * 5}, index=annual),
-            "quarterlyEarnings": _quarterly_eps_fixture([1.0] * 8),
+            "annualEarnings": pd.DataFrame({"reportedEPS": [annual_eps] * 5}, index=annual),
+            "quarterlyEarnings": quarterly,
         },
         "monthly_company_prices": monthly_prices,
         "income_statement": {
-            "quarterlyReports": pd.DataFrame({"totalRevenue": [100.0] * 8}, index=quarterly_index)
+            "quarterlyReports": pd.DataFrame({"totalRevenue": [100.0] * len(quarterly)}, index=quarterly.index)
         },
         "high_yield": 6.0,
     }
@@ -580,3 +582,62 @@ def test_risk_reward_price_target_matches_the_forecast_high(tmp_path, monkeypatc
     assert target == pytest.approx(120.0, abs=0.01)
     # present price is a flat 90.0 across the daily fixture
     assert appreciation == pytest.approx((120.0 / 90.0) * 100 - 100, abs=0.01)
+
+
+# Four quarters of a strongly seasonal but perfectly stable business: every rolling
+# four-quarter window sums to exactly 10.00, so real annual earnings never change.
+SEASONAL_QUARTERS = [4.0, 1.5, 2.0, 2.5, 4.0, 1.5, 2.0]
+
+
+def test_risk_reward_forecast_ignores_quarterly_seasonality(tmp_path, monkeypatch):
+    """Seasonal swings must not masquerade as an earnings trend.
+
+    SEASONAL_QUARTERS has flat trailing-twelve-month earnings of exactly 10.00, but the
+    window ends on a weak quarter. Fitting the raw quarterly series reads that as decline
+    and drives the projection negative; fitting trailing twelve months sees the truth.
+    """
+    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    args = _risk_reward_args(quarterly_values=SEASONAL_QUARTERS, annual_eps=10.0)
+
+    msg, _ = stock_analysis.risk_reward(**args)
+
+    # highs 100..140 over a flat 10.00 annual EPS give pe_high 10..14, mean 12.0
+    forecast = float(re.search(r"Linear Regression of Highs:\s*(-?[\d.]+)", msg).group(1))
+    assert forecast == pytest.approx(12.0 * 10.0, rel=1e-6)
+
+
+def test_risk_reward_declines_to_report_a_target_when_earnings_trend_negative(tmp_path, monkeypatch):
+    """A collapsing earnings trend must not print a negative dollar price target.
+
+    Extrapolating any declining series five years out eventually crosses zero. A negative
+    forecast is not a price, so the report should say so rather than quote one.
+    """
+    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    collapsing = [4.0, 3.0, 2.0, 1.0, 0.5, 0.25, 0.1]
+    args = _risk_reward_args(quarterly_values=collapsing, annual_eps=10.0)
+
+    msg, files = stock_analysis.risk_reward(**args)
+
+    assert "does not support" in msg
+    assert "PRICE TARGET" not in msg
+    assert re.search(r"-[\d,.]+ 5yr predicted stock price", msg) is None
+    # the low-price analysis and its charts remain useful and are still produced
+    assert "LOW PRICE - NEXT 5 YEARS" in msg
+    assert len(files) == 4
+
+
+def test_risk_reward_handles_too_little_history_for_a_trailing_year(tmp_path, monkeypatch):
+    """Fewer than five quarters yields under two TTM points, which cannot define a trend.
+
+    Fitting trailing twelve months needs four quarters per point, so a young listing that the
+    old raw-quarterly fit would have accepted must degrade gracefully rather than crash.
+    """
+    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    args = _risk_reward_args(quarterly_values=[2.5] * 4, annual_eps=10.0)
+
+    msg, files = stock_analysis.risk_reward(**args)
+
+    assert "does not support" in msg
+    assert "PRICE TARGET" not in msg
+    # no EPS chart without a fit, but the three price charts are still produced
+    assert len(files) == 3

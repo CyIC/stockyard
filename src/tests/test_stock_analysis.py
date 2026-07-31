@@ -3,77 +3,30 @@
 """Test stock_report module for stock analysis."""
 import asyncio
 import datetime
-import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 
+from tests import fixture_loader
 # under test
 from warren_bot import stock_analysis
 
 
 # pylint: disable=E1136
-def _load_reports(path):
-    """Load an alphavantage-style statement JSON fixture into the report DataFrame contract.
-
-    Builds {'annualReports', 'quarterlyReports'} of date-indexed numeric DataFrames, matching
-    the structure the report functions consume (and that yfinance_integration now produces).
-    """
-    with open(path, encoding="utf-8") as file:
-        data = json.load(file)
-    reports = {}
-    for period in ("annualReports", "quarterlyReports"):
-        frame = pd.DataFrame(data[period]).set_index("fiscalDateEnding")
-        frame.index = pd.to_datetime(frame.index)
-        frame.sort_index(ascending=True, inplace=True)
-        for column in frame.columns:
-            frame[column] = pd.to_numeric(frame[column], errors="coerce")
-        reports[period] = frame
-    return reports
+def _load_reports(dataset):
+    """Load a statement snapshot in the {'annualReports', 'quarterlyReports'} contract."""
+    return fixture_loader.load(dataset)
 
 
-def _load_earnings(path):
-    """Load an alphavantage-style earnings JSON fixture into the report DataFrame contract."""
-    with open(path, encoding="utf-8") as file:
-        data = json.load(file)
-    earnings = {}
-    for period in ("annualEarnings", "quarterlyEarnings"):
-        frame = pd.DataFrame(data[period]).set_index("fiscalDateEnding")
-        frame.index = pd.to_datetime(frame.index)
-        frame.sort_index(ascending=True, inplace=True)
-        for column in frame.columns:
-            if column != "reportedDate":
-                frame[column] = pd.to_numeric(frame[column], errors="coerce")
-        earnings[period] = frame
-    return earnings
+def _load_earnings():
+    """Load the earnings snapshot in the {'annualEarnings', 'quarterlyEarnings'} contract."""
+    return fixture_loader.load("earnings")
 
 
-def _load_prices(path):
-    """Load an alphavantage-style time-series JSON fixture into the price DataFrame contract."""
-    with open(path, encoding="utf-8") as file:
-        data = json.load(file)
-    pivots = ("Time Series (Daily)", "Monthly Adjusted Time Series", "Weekly Adjusted Time Series")
-    pivot = next(key for key in data if key in pivots)
-    prices = pd.DataFrame(data[pivot]).T.rename(
-        columns={
-            "1. open": "open",
-            "2. high": "high",
-            "3. low": "low",
-            "4. close": "close",
-            "5. adjusted close": "adj_close",
-            "6. volume": "volume",
-            "7. dividend amount": "dividend_amt",
-            "8. split coefficient": "split coefficient",
-        }
-    )
-    prices.index.name = "date"
-    prices.index = pd.to_datetime(prices.index)
-    prices.sort_index(ascending=True, inplace=True)
-    for column in ("open", "high", "low", "close", "adj_close", "volume", "dividend_amt"):
-        prices[column] = pd.to_numeric(prices[column])
-    prices["ticker"] = data["Meta Data"]["2. Symbol"]
-    return prices
+def _load_prices(dataset):
+    """Load a price snapshot as a date-indexed DataFrame."""
+    return fixture_loader.load(dataset)
 
 
 class StockAnalysisTestCase(unittest.TestCase):
@@ -82,10 +35,10 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_record_of_stock(self):
         """Test successfull execution of record of stock method."""
         # GIVEN
-        eps = _load_earnings("./src/tests/IBM.earnings.json")
-        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
-        daily_prices = _load_prices("./src/tests/IBM.daily_adjusted.json")
-        monthly_prices = _load_prices("./src/tests/IBM.monthly_adjusted.json")
+        eps = _load_earnings()
+        income_statement = _load_reports("income_statement")
+        daily_prices = _load_prices("daily_prices")
+        monthly_prices = _load_prices("monthly_prices")
 
         # WHEN
         msg, high_yield = stock_analysis.record_of_stock(eps, income_statement, daily_prices, monthly_prices)
@@ -99,9 +52,9 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_trend(self):
         """Test successfull execution of trend method."""
         # GIVEN
-        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
-        monthly_prices = _load_prices("./src/tests/IBM.monthly_adjusted.json")
-        eps = _load_earnings("./src/tests/IBM.earnings.json")
+        income_statement = _load_reports("income_statement")
+        monthly_prices = _load_prices("monthly_prices")
+        eps = _load_earnings()
 
         # WHEN
         msg, files = stock_analysis.trend(income_statement, eps, monthly_prices)
@@ -115,7 +68,7 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_cash_position(self):
         """Test cash position printing module."""
         # GIVEN
-        balance_sheet = _load_reports("./src/tests/IBM.balance_sheet.json")
+        balance_sheet = _load_reports("balance_sheet")
 
         # WHEN
         msg = stock_analysis.cash_position(balance_sheet)
@@ -128,11 +81,11 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_revenue_growth(self):
         """Test cash position revenue_growth module."""
         # GIVEN
-        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
-        daily_prices = _load_prices("./src/tests/IBM.daily_adjusted.json")
-        cash_flow = _load_reports("./src/tests/IBM.cash_flow.json")
-        earnings = _load_earnings("./src/tests/IBM.earnings.json")
-        balance_sheet = _load_reports("./src/tests/IBM.balance_sheet.json")
+        income_statement = _load_reports("income_statement")
+        daily_prices = _load_prices("daily_prices")
+        cash_flow = _load_reports("cash_flow")
+        earnings = _load_earnings()
+        balance_sheet = _load_reports("balance_sheet")
 
         # WHEN
         msg = stock_analysis.revenue_growth(
@@ -149,10 +102,10 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_risk_reward(self):
         """Test cash position risk_reward module."""
         # GIVEN
-        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
-        daily_prices = _load_prices("./src/tests/IBM.daily_adjusted.json")
-        monthly_prices = _load_prices("./src/tests/IBM.monthly_adjusted.json")
-        earnings = _load_earnings("./src/tests/IBM.earnings.json")
+        income_statement = _load_reports("income_statement")
+        daily_prices = _load_prices("daily_prices")
+        monthly_prices = _load_prices("monthly_prices")
+        earnings = _load_earnings()
 
         # WHEN
         msg, charts = stock_analysis.risk_reward(
