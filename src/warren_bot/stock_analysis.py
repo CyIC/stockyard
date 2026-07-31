@@ -31,13 +31,37 @@ def populate_vars(old: float, new: float):
     """
     diff = new - old
     try:
-        percent_diff = diff / abs(old)
+        if old == 0:
+            # numpy scalars return inf rather than raising, so guard before dividing
+            percent_diff = 0
+        else:
+            percent_diff = diff / abs(old)
     except ZeroDivisionError:
         percent_diff = 0
     except Exception as e:  # pylint: disable=W0718
         logger.error(e)
         percent_diff = 0
     return diff, percent_diff
+
+
+def _ttm_eps(quarterly_earnings):
+    """Trailing twelve month EPS, the annual earnings basis for a P/E ratio.
+
+    :param quarterly_earnings: <pd.DataFrame> quarterly earnings, oldest row first
+    :return: <float> sum of the four most recent reported quarters
+    """
+    return quarterly_earnings["reportedEPS"].iloc[-4:].sum()
+
+
+def _cagr(first, last, periods):
+    """Compound annual growth rate between the first and last observation.
+
+    :param first: <float> oldest observation
+    :param last: <float> newest observation
+    :param periods: <int> elapsed periods between them, i.e. one less than the row count
+    :return: growth rate as a fraction
+    """
+    return pow(last / first, 1 / periods) - 1
 
 
 def past_sales_records(income_statement):
@@ -54,7 +78,7 @@ def past_sales_records(income_statement):
     past_sales_trend = (sales_per_year[0] + sales_per_year[1]) / 2
     sales_increase = recent_sales_trend - past_sales_trend
     sales_percent_increase = sales_increase / past_sales_trend
-    compound_annual_sales_growth_rate = pow((sales_per_year[-1] / sales_per_year[0]), 1 / YRS_LOOKBACK) - 1
+    compound_annual_sales_growth_rate = _cagr(sales_per_year[0], sales_per_year[-1], len(sales_per_year) - 1)
     # display table
     past_sales_record_table = PrettyTable(float_format=".4")
     past_sales_record_table.header = False
@@ -98,7 +122,7 @@ def past_eps(earnings):
     past_eps_mean = (earnings.iloc[1] + earnings.iloc[0]) / 2
     eps_increase = recent_eps_mean - past_eps_mean
     eps_percent_increase = eps_increase / past_eps_mean
-    compound_annual_eps_growth_rate = pow(earnings.iloc[-1] / earnings.iloc[0], (1 / YRS_LOOKBACK)) - 1
+    compound_annual_eps_growth_rate = _cagr(earnings.iloc[0], earnings.iloc[-1], len(earnings) - 1)
     # display table
     past_eps_record_table = PrettyTable()
     past_eps_record_table.align = "l"
@@ -156,8 +180,8 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
 
     # get current stock prices
     present_price = daily_prices["close"][-1]
-    # get current eps
-    present_eps = quarterly_eps.iloc[-1]["reportedEPS"]
+    # get current eps on an annual basis, to match the annual EPS the PE columns use
+    present_eps = _ttm_eps(quarterly_eps)
     # get monthly prices
     msg.append(f"*Present Price*:\t**{present_price:.3f}**\t*Present EPS*:\t**{present_eps:.3f}**")
     # Display
@@ -261,7 +285,7 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
     y.add_row(
         [
             f"Present Price % difference then high price {YRS_LOOKBACK} years ago",
-            f"{((present_price - high_prices.values[-1]) / high_prices.values[-1]):.4%}",
+            f"{((present_price - high_prices.values[0]) / high_prices.values[0]):.4%}",
             "% Increase in Sales",
             f"{sales_percent_increase:.4%}",
             "% Increase in Earnings",
@@ -538,7 +562,7 @@ def cash_position(balance_sheet: pd.DataFrame):
     avl_table.align = "r"
     avl_table.align[""] = "l"
     avl_table.add_row(["---Liabilities---", "", "", "", ""])
-    old_payables = annual_reports["currentAccountsPayable"][0]
+    old_payables = annual_reports["currentAccountsPayable"][-2]
     new_payables = annual_reports["currentAccountsPayable"][-1]
     diff_payables, percent_diff_payables = populate_vars(old_payables, new_payables)
     avl_table.add_row(
@@ -603,7 +627,7 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
     avl_table.add_row(["", "", "", "", ""])
-    cash_table.add_row(
+    avl_table.add_row(
         [
             "Shares outstanding",
             f"${new_shares:20,.0f}",
@@ -657,7 +681,7 @@ def revenue_growth(
     revenue = pd.DataFrame(revenue["totalRevenue"])
     revenue_diff = revenue.diff()
     revenue["change"] = revenue_diff
-    revenue["%_change"] = revenue["change"].div(revenue["totalRevenue"])
+    revenue["%_change"] = revenue["totalRevenue"].pct_change()
 
     pd.options.display.float_format = "{:,.3f}".format
     msg += f"```{revenue}```"
@@ -767,7 +791,7 @@ def _zone_analysis(forcast_high: float, projected_low: float | None, present_pri
         ratio = (forcast_high - present_price) / (present_price - projected_low)
     except TypeError as e:
         return f"```{e}```", 0
-    except AssertionError:
+    except (AssertionError, ZeroDivisionError):
         return "```NaN```", 0
     return fragment, ratio
 
@@ -816,7 +840,11 @@ def risk_reward(
     # convert time to UNIX Epoch time for x values
     eps_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), quarterly_eps["reportedEPS"], 1)
     eps_pred = _predict_values(eps_prediction, time)
-    est_high_eps = eps_prediction(future_five_years.timestamp())
+    # Project a full year of earnings - the four quarters ending five years out - so the
+    # forecast shares the annual EPS basis pe_high is built on.
+    est_high_eps = sum(
+        eps_prediction((future_five_years - relativedelta(months=3 * quarter)).timestamp()) for quarter in range(4)
+    )
     eps_pred = pd.Series(pd.to_numeric(eps_pred), index=pd.to_datetime(time))
     # convert arrays to DataFrame for plotting
     tmp_info = {"eps": quarterly_eps["reportedEPS"], "eps_pred": eps_pred}
@@ -993,7 +1021,7 @@ async def run(message, ticker):
             daily_company_prices,
             cash_flow,
             income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"][-1],
+            _ttm_eps(earnings["quarterlyEarnings"]),
             balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
         )
     )
