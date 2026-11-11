@@ -1,4 +1,4 @@
-# Context & Glossary — Warren Bot
+# Context & Glossary — Stockyard
 
 The ubiquitous language for the stock-analysis domain. Glossary only — no implementation
 details. Terms are canonical; when code or conversation drifts from these, the term wins
@@ -35,3 +35,34 @@ The comparable full-year history of the company: Complete Fiscal Years carrying 
 EPS that are guaranteed to refer to the *same* Fiscal Year, because every series is keyed on the
 income-statement period-end date. This is the dataset every year-over-year comparison reads from;
 sections must not re-derive year membership from any other source. See ADR-0001.
+### Stockyard / Warren
+**Stockyard** is the project and its library: the research engine and its front ends. **Warren** is the
+persona members interact with: the Discord bot today, and the AI agent later. Code is named for
+Stockyard; user-facing chat is Warren.
+
+### Stock Selection Guide (SSG)
+The BetterInvesting (NAIC) worksheet the stock report follows. Its parts are **Sections**: Past Sales,
+Past EPS, Record of Stock, Trend, Cash Position, Revenue Growth, Earnings Growth, Risk & Reward.
+
+### Section Result
+The structured outcome of one Section for one ticker as of one date: numbers and series, never
+formatted text. Missing values are explicit (null) and explained by a Warning.
+
+### Report
+The collection of Section Results for a ticker, plus report-level Warnings, the as-of date and the
+data source.
+
+### As-of Date
+The date a Report is computed for. Every look-back window, "present price" and forecast horizon is
+measured from it. Calculations never read the system clock.
+
+### Warning
+A structured, non-fatal notice attached to a Report or Section, e.g. `insufficient_history` when fewer
+Complete Fiscal Years exist than the SSG look-back needs.
+
+### Front End
+A way of delivering Reports to someone: the Discord bot, the CLI, and later the MCP server. Front ends
+parse input, call the core and render; they never compute.
+
+### Renderer
+Turns Section Results into one presentation: Discord markdown, terminal text, JSON, or chart images.
