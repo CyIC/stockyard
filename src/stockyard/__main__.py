@@ -7,6 +7,7 @@ import re
 
 import discord
 
+from stockyard import logging_config
 from stockyard import stock_analysis
 from stockyard import utilities as utils
 
@@ -154,4 +155,5 @@ async def on_message(message):
 
 
 if __name__ == "__main__":
+    logging_config.configure_logging()
     CLIENT.run(token)

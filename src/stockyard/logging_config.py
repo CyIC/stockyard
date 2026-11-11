@@ -31,26 +31,35 @@ def set_logging_level(level):
     return rtn_level
 
 
-LOGGING_LEVEL = os.environ.get("LOGGING", "INFO")
-LOGGING_LEVEL = set_logging_level(LOGGING_LEVEL)
+def configure_logging():
+    """Configure root logging for a front end (bot or CLI).
 
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "json": {
-            "format": "%(asctime)s::%(levelname)s::%(name)s::%(filename)s::%(lineno)s::%(funcName)s::%(message)s",
-            "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+    Never called on import: a library must not install handlers on behalf of whoever imports it.
+    Records go to stderr so stdout stays a clean data channel (ADR-0003). The level comes from the
+    LOGGING_LEVEL environment variable (default INFO).
+    """
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "json": {
+                    "format": (
+                        "%(asctime)s::%(levelname)s::%(name)s::%(filename)s::%(lineno)s::%(funcName)s::%(message)s"
+                    ),
+                    "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                }
+            },
+            "handlers": {
+                "stderr": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stderr",
+                    "formatter": "json",
+                }
+            },
+            "root": {
+                "handlers": ["stderr"],
+                "level": set_logging_level(os.environ.get("LOGGING_LEVEL", "INFO")),
+            },
         }
-    },
-    "handlers": {
-        "stdout": {
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-            "formatter": "json",
-        }
-    },
-    "loggers": {"": {"handlers": ["stdout"], "level": LOGGING_LEVEL}},
-}
-
-logging.config.dictConfig(LOGGING)
+    )
