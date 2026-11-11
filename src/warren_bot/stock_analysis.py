@@ -31,13 +31,37 @@ def populate_vars(old: float, new: float):
     """
     diff = new - old
     try:
-        percent_diff = diff / abs(old)
+        if old == 0:
+            # numpy scalars return inf rather than raising, so guard before dividing
+            percent_diff = 0
+        else:
+            percent_diff = diff / abs(old)
     except ZeroDivisionError:
         percent_diff = 0
     except Exception as e:  # pylint: disable=W0718
         logger.error(e)
         percent_diff = 0
     return diff, percent_diff
+
+
+def _ttm_eps(quarterly_earnings):
+    """Trailing twelve month EPS, the annual earnings basis for a P/E ratio.
+
+    :param quarterly_earnings: <pd.DataFrame> quarterly earnings, oldest row first
+    :return: <float> sum of the four most recent reported quarters
+    """
+    return quarterly_earnings["reportedEPS"].iloc[-4:].sum()
+
+
+def _cagr(first, last, periods):
+    """Compound annual growth rate between the first and last observation.
+
+    :param first: <float> oldest observation
+    :param last: <float> newest observation
+    :param periods: <int> elapsed periods between them, i.e. one less than the row count
+    :return: growth rate as a fraction
+    """
+    return pow(last / first, 1 / periods) - 1
 
 
 def past_sales_records(income_statement):
@@ -54,7 +78,7 @@ def past_sales_records(income_statement):
     past_sales_trend = (sales_per_year.iloc[0] + sales_per_year.iloc[1]) / 2
     sales_increase = recent_sales_trend - past_sales_trend
     sales_percent_increase = sales_increase / past_sales_trend
-    compound_annual_sales_growth_rate = pow((sales_per_year.iloc[-1] / sales_per_year.iloc[0]), 1 / YRS_LOOKBACK) - 1
+    compound_annual_sales_growth_rate = _cagr(sales_per_year.iloc[0], sales_per_year.iloc[-1], len(sales_per_year) - 1)
     # display table
     past_sales_record_table = PrettyTable(float_format=".4")
     past_sales_record_table.header = False
@@ -98,7 +122,7 @@ def past_eps(earnings):
     past_eps_mean = (earnings.iloc[1] + earnings.iloc[0]) / 2
     eps_increase = recent_eps_mean - past_eps_mean
     eps_percent_increase = eps_increase / past_eps_mean
-    compound_annual_eps_growth_rate = pow(earnings.iloc[-1] / earnings.iloc[0], (1 / YRS_LOOKBACK)) - 1
+    compound_annual_eps_growth_rate = _cagr(earnings.iloc[0], earnings.iloc[-1], len(earnings) - 1)
     # display table
     past_eps_record_table = PrettyTable()
     past_eps_record_table.align = "l"
@@ -156,8 +180,8 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
 
     # get current stock prices
     present_price = daily_prices["close"].iloc[-1]
-    # get current eps
-    present_eps = quarterly_eps.iloc[-1]["reportedEPS"]
+    # get current eps on an annual basis, to match the annual EPS the PE columns use
+    present_eps = _ttm_eps(quarterly_eps)
     # get monthly prices
     msg.append(f"*Present Price*:\t**{present_price:.3f}**\t*Present EPS*:\t**{present_eps:.3f}**")
     # Display
@@ -261,7 +285,7 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
     y.add_row(
         [
             f"Present Price % difference then high price {YRS_LOOKBACK} years ago",
-            f"{((present_price - high_prices.values[-1]) / high_prices.values[-1]):.4%}",
+            f"{((present_price - high_prices.values[0]) / high_prices.values[0]):.4%}",
             "% Increase in Sales",
             f"{sales_percent_increase:.4%}",
             "% Increase in Earnings",
@@ -538,7 +562,7 @@ def cash_position(balance_sheet: pd.DataFrame):
     avl_table.align = "r"
     avl_table.align[""] = "l"
     avl_table.add_row(["---Liabilities---", "", "", "", ""])
-    old_payables = annual_reports["currentAccountsPayable"].iloc[0]
+    old_payables = annual_reports["currentAccountsPayable"].iloc[-2]
     new_payables = annual_reports["currentAccountsPayable"].iloc[-1]
     diff_payables, percent_diff_payables = populate_vars(old_payables, new_payables)
     avl_table.add_row(
@@ -603,7 +627,7 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
     avl_table.add_row(["", "", "", "", ""])
-    cash_table.add_row(
+    avl_table.add_row(
         [
             "Shares outstanding",
             f"${new_shares:20,.0f}",
@@ -657,7 +681,7 @@ def revenue_growth(
     revenue = pd.DataFrame(revenue["totalRevenue"])
     revenue_diff = revenue.diff()
     revenue["change"] = revenue_diff
-    revenue["%_change"] = revenue["change"].div(revenue["totalRevenue"])
+    revenue["%_change"] = revenue["totalRevenue"].pct_change()
 
     pd.options.display.float_format = "{:,.3f}".format
     msg += f"```{revenue}```"
@@ -767,7 +791,7 @@ def _zone_analysis(forcast_high: float, projected_low: float | None, present_pri
         ratio = (forcast_high - present_price) / (present_price - projected_low)
     except TypeError as e:
         return f"```{e}```", 0
-    except AssertionError:
+    except (AssertionError, ZeroDivisionError):
         return "```NaN```", 0
     return fragment, ratio
 
@@ -811,23 +835,30 @@ def risk_reward(
     daily_prices = daily_prices[daily_prices.index >= datetime.datetime.now() - relativedelta(years=5)]
     future_five_years = datetime.datetime.now() + relativedelta(years=5)
 
-    # Build EPS prediction
-    time = quarterly_eps.index.tolist()
-    # convert time to UNIX Epoch time for x values
-    eps_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), quarterly_eps["reportedEPS"], 1)
-    eps_pred = _predict_values(eps_prediction, time)
-    est_high_eps = eps_prediction(future_five_years.timestamp())
-    eps_pred = pd.Series(pd.to_numeric(eps_pred), index=pd.to_datetime(time))
-    # convert arrays to DataFrame for plotting
-    tmp_info = {"eps": quarterly_eps["reportedEPS"], "eps_pred": eps_pred}
-    quarterly_eps = pd.DataFrame(tmp_info, index=time)
-    quarterly_eps.index.name = "date"
-    quarterly_eps.index = pd.to_datetime(time)
-    quarterly_eps.sort_index(ascending=True, inplace=True)
-    quarterly_eps.plot()
-    eps_pred_fig_path = utils.data_path("eps_pred_fig.jpg")
-    plt.savefig(eps_pred_fig_path)
-    files.append(eps_pred_fig_path)
+    # Build EPS prediction from trailing twelve month earnings. Quarterly EPS is strongly
+    # seasonal, so fitting it raw reads the seasonal swing as a trend; TTM removes that and is
+    # already on the annual basis pe_high is built from. Needs 4 quarters per TTM point.
+    ttm_eps = quarterly_eps["reportedEPS"].rolling(4).sum().dropna()
+    est_high_eps = 0
+    if len(ttm_eps) >= 2:
+        time = ttm_eps.index.tolist()
+        # convert time to UNIX Epoch time for x values
+        eps_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), ttm_eps, 1)
+        est_high_eps = eps_prediction(future_five_years.timestamp())
+        eps_pred = pd.Series(pd.to_numeric(_predict_values(eps_prediction, time)), index=pd.to_datetime(time))
+        # convert arrays to DataFrame for plotting
+        tmp_info = {"ttm_eps": ttm_eps, "eps_pred": eps_pred}
+        ttm_frame = pd.DataFrame(tmp_info, index=time)
+        ttm_frame.index.name = "date"
+        ttm_frame.index = pd.to_datetime(time)
+        ttm_frame.sort_index(ascending=True, inplace=True)
+        ttm_frame.plot()
+        eps_pred_fig_path = utils.data_path("eps_pred_fig.jpg")
+        plt.savefig(eps_pred_fig_path)
+        files.append(eps_pred_fig_path)
+    # Extrapolating any declining series five years out eventually crosses zero, and a
+    # negative projection is not a price. Report the gap instead of quoting one.
+    has_forecast = est_high_eps > 0
     forcast_high = pe_high.mean() * est_high_eps
 
     # Build High Revenue Prediction
@@ -859,8 +890,12 @@ def risk_reward(
     #                                  pd.to_numeric(company_data['shares_outstanding'].iloc[-1]))
 
     # Build High Price Prediction
-    msg += f"""\n**HIGH PRICE - NEXT 5 YEARS**
+    if has_forecast:
+        msg += f"""\n**HIGH PRICE - NEXT 5 YEARS**
 ```Linear Regression of Highs: {forcast_high}```\n"""
+    else:
+        msg += """\n**HIGH PRICE - NEXT 5 YEARS**
+```The earnings trend does not support a five-year price projection.```\n"""
 
     # Build Low Price Predictions
     # Calculate linear regression low
@@ -919,37 +954,40 @@ def risk_reward(
 """.format(
         a=lr_low, b=avg_low, c=severe_low, d=price_dividend
     )
-    # Build Zoning
-    msg += "**ZONING**"
-    # Predict A
-    msg += "\n(a - Linear Regression)"
-    fragment, lr_low = _zone_analysis(forcast_high, lr_low, present_price)
-    msg += fragment
-    # Predict B
-    msg += "\n(b - Avg Low Price of Last 5 Years)"
-    fragment, avg_low = _zone_analysis(forcast_high, avg_low, present_price)
-    msg += fragment
-    # Predict C
-    msg += "\n(c - Recent Severe Market Low)"
-    fragment, severe_low = _zone_analysis(forcast_high, severe_low, present_price)
-    msg += fragment
-    # Predict D
-    msg += "\n(d - Price Dividend Support)"
-    fragment, dividend_low = _zone_analysis(forcast_high, price_dividend, present_price)
-    msg += fragment
-    # Build UP-SIDE DOWN-SIDE Ration
-    msg += """\n**UP-SIDE / DOWN-SIDE RATIO (Potential Gain vs Risk of Loss)**"""
-    msg += """```a) {lr_low:.4f} to 1
+    # Zoning and the price target are all measured against forcast_high, so they only mean
+    # anything when the earnings trend produced one.
+    if has_forecast:
+        # Build Zoning
+        msg += "**ZONING**"
+        # Predict A
+        msg += "\n(a - Linear Regression)"
+        fragment, lr_low = _zone_analysis(forcast_high, lr_low, present_price)
+        msg += fragment
+        # Predict B
+        msg += "\n(b - Avg Low Price of Last 5 Years)"
+        fragment, avg_low = _zone_analysis(forcast_high, avg_low, present_price)
+        msg += fragment
+        # Predict C
+        msg += "\n(c - Recent Severe Market Low)"
+        fragment, severe_low = _zone_analysis(forcast_high, severe_low, present_price)
+        msg += fragment
+        # Predict D
+        msg += "\n(d - Price Dividend Support)"
+        fragment, dividend_low = _zone_analysis(forcast_high, price_dividend, present_price)
+        msg += fragment
+        # Build UP-SIDE DOWN-SIDE Ration
+        msg += """\n**UP-SIDE / DOWN-SIDE RATIO (Potential Gain vs Risk of Loss)**"""
+        msg += """```a) {lr_low:.4f} to 1
 b) {avg_low:.4f} to 1
 c) {severe_low:.4f} to 1
 d) {dividend_low:.4f} to 1```""".format(
-        lr_low=lr_low, avg_low=avg_low, severe_low=severe_low, dividend_low=dividend_low
-    )
-    # TODO Build Price Targe
-    msg += """\n**PRICE TARGET**
+            lr_low=lr_low, avg_low=avg_low, severe_low=severe_low, dividend_low=dividend_low
+        )
+        # TODO Build Price Targe
+        msg += """\n**PRICE TARGET**
 ```${:,.2f} 5yr predicted stock price drives {:,.4f}% appreciation```""".format(
-        forcast_high, (forcast_high / present_price) * 100 - 100
-    )
+            forcast_high, (forcast_high / present_price) * 100 - 100
+        )
     return msg, files
 
 
@@ -993,7 +1031,7 @@ async def run(message, ticker):
             daily_company_prices,
             cash_flow,
             income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"].iloc[-1],
+            _ttm_eps(earnings["quarterlyEarnings"]),
             balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[-1],
         )
     )
