@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from stockyard import utilities as util
-
 LOGGER = logging.getLogger()
 
 # Map alphavantage field names (which the report code consumes) to the candidate yfinance
@@ -680,5 +678,3 @@ def process_yfinance_annual_company_info(ticker: str, years: int = 5):
         company_data = company_data.iloc[-years:]
 
     return company_data
-
-

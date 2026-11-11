@@ -74,5 +74,3 @@ async def send_message_in_chunks(channel, content):
 
         for chunk in chunks:
             await channel.send(chunk)  # send each chunk to the channel
-
-
