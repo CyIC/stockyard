@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import pandas as pd
 import yfinance as yf
 
+from stockyard.data.errors import DataUnavailable, UpstreamError
 from stockyard.data.tickers import validate_ticker
 from stockyard.data.yfinance_source import BALANCE_FIELD_MAP, CASHFLOW_FIELD_MAP, INCOME_FIELD_MAP, _remap_columns
 
@@ -79,9 +80,28 @@ def fetch_stock_data(raw_ticker: str, *, ticker_factory: Callable = yf.Ticker) -
     :param raw_ticker: symbol as typed by a user or agent
     :param ticker_factory: builds the yfinance Ticker (injectable for tests)
     :raises InvalidTicker: before any network access, if the symbol is not plausible
+    :raises UpstreamError: if the data source raises while fetching
+    :raises DataUnavailable: if there are neither statements nor prices for the ticker
     """
     ticker = validate_ticker(raw_ticker)
-    stock = ticker_factory(ticker)
+    try:
+        data = _fetch(ticker, ticker_factory(ticker))
+    except Exception as exc:  # pylint: disable=broad-exception-caught  # any yfinance failure is upstream
+        raise UpstreamError(f"fetching {ticker} failed: {exc}") from exc
+    statements = (
+        data.income_annual,
+        data.income_quarterly,
+        data.balance_annual,
+        data.balance_quarterly,
+        data.cashflow_annual,
+        data.cashflow_quarterly,
+    )
+    if data.daily_prices.empty and all(frame.empty for frame in statements):
+        raise DataUnavailable(f"no statements or prices for {ticker}")
+    return data
+
+
+def _fetch(ticker: str, stock) -> StockData:
     income_annual = _statement(stock.financials, INCOME_FIELD_MAP)
     return StockData(
         ticker=ticker,

@@ -5,6 +5,7 @@ import dataclasses
 import pandas as pd
 import pytest
 
+from stockyard.data.errors import DataUnavailable, UpstreamError
 from stockyard.data.snapshot import StockData, fetch_stock_data
 from stockyard.data.tickers import InvalidTicker
 from tests.fakes import FakeTicker, statement
@@ -144,3 +145,43 @@ def test_without_annual_statements_the_full_listing_history_is_requested():
     _, fake = _fetch(_fake(income=pd.DataFrame()))
     calls = [kwargs for name, kwargs in fake.calls if name == "history"]
     assert calls == [{"period": "max", "interval": "1d", "auto_adjust": False}]
+
+
+def test_no_statements_and_no_prices_is_data_unavailable():
+    empty = FakeTicker("ZZZZ")
+    with pytest.raises(DataUnavailable, match="ZZZZ"):
+        fetch_stock_data("zzzz", ticker_factory=lambda symbol: empty)
+
+
+def test_prices_without_statements_is_not_unavailable():
+    """A listing too new for any annual statement still has a price history worth reporting."""
+    data, _ = _fetch(_fake(income=pd.DataFrame(), balance=pd.DataFrame(), cashflow=pd.DataFrame()))
+    assert not data.daily_prices.empty
+
+
+class _BrokenHistory(FakeTicker):
+    def history(self, **kwargs):
+        raise ConnectionError("network down")
+
+
+class _BrokenStatements(FakeTicker):
+    @property
+    def financials(self):
+        raise RuntimeError("yahoo said no")
+
+    @financials.setter
+    def financials(self, value):
+        pass
+
+
+@pytest.mark.parametrize("broken", [_BrokenHistory, _BrokenStatements])
+def test_errors_raised_by_yfinance_become_upstream_errors(broken):
+    fake = broken("IBM", earnings_dates=_earnings_dates(), history=_history())
+    with pytest.raises(UpstreamError, match="IBM") as caught:
+        fetch_stock_data("IBM", ticker_factory=lambda symbol: fake)
+    assert caught.value.__cause__ is not None
+
+
+def test_error_types_are_distinguishable_from_each_other():
+    assert not issubclass(DataUnavailable, UpstreamError)
+    assert not issubclass(UpstreamError, DataUnavailable)
