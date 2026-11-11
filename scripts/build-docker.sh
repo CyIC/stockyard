@@ -37,7 +37,7 @@ docker images "$IMAGE_NAME" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}
 
 # Optional: Run a quick test
 echo -e "${YELLOW}Testing image...${NC}"
-if docker run --rm "$IMAGE_NAME:latest" python -c "import warren_bot; print('Import test passed')"; then
+if docker run --rm "$IMAGE_NAME:latest" python -c "import stockyard; print('Import test passed')"; then
     echo -e "${GREEN}Import test passed!${NC}"
 else
     echo -e "${RED}Import test failed!${NC}"

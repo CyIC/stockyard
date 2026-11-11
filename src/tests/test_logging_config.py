@@ -5,7 +5,7 @@ import logging
 import logging.config
 import unittest
 
-from warren_bot import logging_config
+from stockyard import logging_config
 
 
 class SetLoggingLevelTestCase(unittest.TestCase):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
-"""Collection of useful utilities for warren_bot.
+"""Collection of useful utilities for stockyard.
 
 Includes getting data from alphavantage and processing data structures.
 """

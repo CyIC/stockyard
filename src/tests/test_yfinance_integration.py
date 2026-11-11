@@ -6,13 +6,13 @@ from unittest.mock import patch, MagicMock
 
 import pandas as pd
 
-from warren_bot import yfinance_integration as yf_api
+from stockyard import yfinance_integration as yf_api
 
 
 class YfinanceIntegrationTestCase(unittest.TestCase):
     """Test yfinance integration methods."""
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_overview(self, mock_ticker):
         """Test get_yfinance_overview method."""
         # GIVEN
@@ -39,7 +39,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertEqual(result["Symbol"], "AAPL")
         self.assertEqual(result["Name"], "Apple Inc.")
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_income_statement(self, mock_ticker):
         """Test get_yfinance_income_statement method."""
         # GIVEN
@@ -73,7 +73,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertIn("netIncome", result["annualReports"].columns)
         self.assertEqual(result["annualReports"]["totalRevenue"].iloc[-1], 100000)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_income_statement_quarterly_aggregation(self, mock_ticker):
         """Test that quarterly income statement is aggregated into extra annual periods."""
         # GIVEN
@@ -111,7 +111,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         annual_years = set(annual_reports.index.year)
         self.assertIn(2021, annual_years)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_income_statement_years_limit(self, mock_ticker):
         """Test that annual reports are trimmed to the requested years."""
         # GIVEN
@@ -134,7 +134,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertIsInstance(result["quarterlyReports"], pd.DataFrame)
         mock_ticker.assert_called_once_with("AAPL")
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_balance_sheet(self, mock_ticker):
         """Test get_yfinance_balance_sheet method."""
         # GIVEN
@@ -163,7 +163,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertEqual(result["annualReports"]["cashAndCashEquivalentsAtCarryingValue"].iloc[-1], 500000)
         mock_ticker.assert_called_once_with("AAPL")
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_balance_sheet_quarterly_snapshot(self, mock_ticker):
         """Test that quarterly balance sheet uses latest snapshot (not sum) for extra years."""
         # GIVEN
@@ -203,7 +203,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         row_2021 = annual_reports[annual_reports.index.year == 2021]
         self.assertEqual(row_2021["totalCurrentAssets"].iloc[0], 440000)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_balance_sheet_years_limit(self, mock_ticker):
         """Test that annual reports are trimmed to the requested years."""
         # GIVEN
@@ -224,7 +224,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         # THEN
         self.assertEqual(len(result["annualReports"]), 2)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_cash_flow(self, mock_ticker):
         """Test get_yfinance_cash_flow method."""
         # GIVEN
@@ -255,7 +255,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertEqual(result["annualReports"]["dividendPayout"].iloc[-1], 70000)
         mock_ticker.assert_called_once_with("AAPL")
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_cash_flow_quarterly_aggregation(self, mock_ticker):
         """Test that quarterly cash flow is aggregated into extra annual periods."""
         # GIVEN
@@ -292,7 +292,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         annual_years = set(annual_reports.index.year)
         self.assertIn(2021, annual_years)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_cash_flow_years_limit(self, mock_ticker):
         """Test that annual reports are trimmed to the requested years."""
         # GIVEN
@@ -313,7 +313,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         # THEN
         self.assertEqual(len(result["annualReports"]), 2)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_earnings(self, mock_ticker):
         """Test get_yfinance_earnings uses get_earnings_dates for extended history."""
         # GIVEN
@@ -351,7 +351,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertIn("reportedEPS", result["annualEarnings"].columns)
         mock_stock.get_earnings_dates.assert_called_once_with(limit=20)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_earnings_custom_years(self, mock_ticker):
         """Test get_yfinance_earnings with custom years parameter."""
         # GIVEN
@@ -369,7 +369,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertTrue(result["annualEarnings"].empty)
         self.assertTrue(result["quarterlyEarnings"].empty)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_earnings_fallback(self, mock_ticker):
         """Test get_yfinance_earnings falls back to stock.earnings on failure."""
         # GIVEN
@@ -486,7 +486,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertTrue(result["annualEarnings"].empty)
         self.assertTrue(result["quarterlyEarnings"].empty)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_yfinance_company_prices(self, mock_ticker):
         """Test get_yfinance_company_prices method."""
         # GIVEN
@@ -525,7 +525,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertIn("log_return", result.columns)
         mock_ticker.assert_called_once_with("AAPL")
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_get_daily_yfinance_company_prices(self, mock_ticker):
         """Test get_daily_yfinance_company_prices method."""
         # GIVEN
@@ -568,7 +568,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         # We're just testing that it doesn't raise an exception
         self.assertIsNotNone(result)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_process_yfinance_annual_company_info(self, mock_ticker):
         """Test process_yfinance_annual_company_info method."""
         # GIVEN
@@ -601,7 +601,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         # EPS should be Net Income / Shares Outstanding
         self.assertAlmostEqual(result["eps"].iloc[-1], 20000 / 10000)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_process_yfinance_annual_company_info_quarterly_extension(self, mock_ticker):
         """Test that quarterly data extends annual company info beyond ~4 years."""
         # GIVEN
@@ -645,7 +645,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         result_years = set(result.index.year)
         self.assertIn(2021, result_years)
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_process_yfinance_annual_company_info_years_limit(self, mock_ticker):
         """Test that company info is trimmed to the requested years."""
         # GIVEN
@@ -784,7 +784,7 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         self.assertTrue(pd.isna(eps[0]))
         self.assertTrue(pd.isna(shares[0]))
 
-    @patch("warren_bot.yfinance_integration.yf.Ticker")
+    @patch("stockyard.yfinance_integration.yf.Ticker")
     def test_empty_data_handling(self, mock_ticker):
         """Test handling of empty data from yfinance."""
         # GIVEN

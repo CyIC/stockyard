@@ -11,8 +11,8 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from prettytable import PrettyTable
 
-from warren_bot import utilities as utils
-from warren_bot import yfinance_integration as yf_api
+from stockyard import utilities as utils
+from stockyard import yfinance_integration as yf_api
 
 YRS_LOOKBACK = 5
 logger = logging.getLogger("discord")

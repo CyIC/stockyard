@@ -22,7 +22,7 @@ jobs:
         -   name: Lint with flake8
             run: |
                 # stop the build if there are Python syntax errors or undefined names
-                poetry run flake8 --ignore=E501,D401 src/warren_bot setup.py
+                poetry run flake8 --ignore=E501,D401 src/stockyard setup.py
         -   name: Test with pytest
             run: |
                 poetry run pytest

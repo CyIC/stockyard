@@ -11,7 +11,7 @@ import pandas as pd
 
 from tests import fixture_loader
 # under test
-from warren_bot import stock_analysis
+from stockyard import stock_analysis
 
 
 # pylint: disable=E1136

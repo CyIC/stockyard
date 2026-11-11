@@ -7,8 +7,8 @@ import re
 
 import discord
 
-from warren_bot import stock_analysis
-from warren_bot import utilities as utils
+from stockyard import stock_analysis
+from stockyard import utilities as utils
 
 token = utils.load_discord_token()
 LOGGER = logging.getLogger("discord")
@@ -91,7 +91,7 @@ async def run_stock_report(message):
 async def run_report_bug(message):
     """A method to log and track bug reports from users.
 
-    This method will be used to provide feedback from users for warren_bot. Interactions will include modifying message
+    This method will be used to provide feedback from users for Warren. Interactions will include modifying message
     reactions and adding new messages to the channel.
 
     :param message:  Discord Message
@@ -141,7 +141,7 @@ async def on_message(message):
     if prompt is None or prompt == "":
         return
 
-    # List of commands warren_bot will respond to
+    # List of commands Warren will respond to
     match str.lower(prompt):
         case "!help":
             await help_command(message)

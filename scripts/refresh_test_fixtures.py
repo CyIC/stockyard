@@ -23,7 +23,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
-from warren_bot import yfinance_integration as yf_api  # noqa: E402  pylint: disable=C0413
+from stockyard import yfinance_integration as yf_api  # noqa: E402  pylint: disable=C0413
 
 
 def _clean(value):

@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from warren_bot import utilities as util
+from stockyard import utilities as util
 
 
 class SendMessageInChunksTestCase(unittest.TestCase):

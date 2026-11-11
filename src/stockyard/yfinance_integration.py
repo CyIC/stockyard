@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from warren_bot import utilities as util
+from stockyard import utilities as util
 
 LOGGER = logging.getLogger()
 

@@ -41,7 +41,7 @@ docker images %IMAGE_NAME%
 
 REM Optional: Run a quick test
 echo Testing image...
-docker run --rm "%IMAGE_NAME%:latest" python -c "import warren_bot; print('Import test passed')"
+docker run --rm "%IMAGE_NAME%:latest" python -c "import stockyard; print('Import test passed')"
 if errorlevel 1 (
     echo Import test failed!
     exit /b 1

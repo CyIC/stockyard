@@ -18,7 +18,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 # under test
-from warren_bot import stock_analysis
+from stockyard import stock_analysis
 
 matplotlib.use("Agg")  # headless: risk_reward writes chart files
 

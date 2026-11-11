@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir poetry==2.1.0
 
 WORKDIR /build
 
-# Preserve the src/ layout so poetry-core discovers the warren_bot package correctly
+# Preserve the src/ layout so poetry-core discovers the stockyard package correctly
 COPY pyproject.toml poetry.lock README.md ./
 COPY src/ ./src/
 
@@ -64,7 +64,7 @@ RUN python -m venv --copies .venv
 COPY --from=builder /build/dist/*.whl ./
 RUN pip install --no-cache-dir ./*.whl \
     && rm ./*.whl \
-    && python -c "import warren_bot; print('Warren Bot installed successfully')"
+    && python -c "import stockyard; print('Warren Bot installed successfully')"
 
 # ------------------------------------------------------------------------------------------
 # RUNTIME STAGE — distroless, non-root, no shell. Only COPY + metadata here.
@@ -83,9 +83,9 @@ LABEL maintainer="J.A. Simmons V <simmonsj@jasimmonsv.com>" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.vendor="Cypress Investment Club" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.url="https://github.com/CyIC/warren_bot" \
-      org.opencontainers.image.documentation="https://github.com/CyIC/warren_bot/blob/main/README.md" \
-      org.opencontainers.image.source="https://github.com/CyIC/warren_bot" \
+      org.opencontainers.image.url="https://github.com/CyIC/stockyard" \
+      org.opencontainers.image.documentation="https://github.com/CyIC/stockyard/blob/main/README.md" \
+      org.opencontainers.image.source="https://github.com/CyIC/stockyard" \
       security.scan.policy="required" \
       security.non-root="true"
 
@@ -111,11 +111,11 @@ USER nonroot
 
 # Run via the venv interpreter explicitly. The base image's ENTRYPOINT is the system python
 # (/usr/bin/python), which lacks the app; resetting ENTRYPOINT to the venv python ensures
-# `warren_bot` is importable. Exec form works without a shell in the distroless image.
+# `stockyard` is importable. Exec form works without a shell in the distroless image.
 ENTRYPOINT ["/app/.venv/bin/python"]
-CMD ["-m", "warren_bot"]
+CMD ["-m", "stockyard"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD ["/app/.venv/bin/python", "-c", "import warren_bot, sys; sys.exit(0)"]
+    CMD ["/app/.venv/bin/python", "-c", "import stockyard, sys; sys.exit(0)"]
 
 STOPSIGNAL SIGTERM

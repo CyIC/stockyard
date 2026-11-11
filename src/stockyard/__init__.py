@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Top-level package for warrenbot.
+"""Top-level package for stockyard.
 
-warren_bot
+stockyard
 Copyright (c) 2024 Cypress Investment Club
 Full license in LICENSE.md
 """
@@ -14,4 +14,4 @@ __email__ = "simmonsj@jasimmonsv.com"
 __version__ = "0.1.0"
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.info("Init warren_bot...")
+LOGGER.info("Init stockyard...")

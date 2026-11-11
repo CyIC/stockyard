@@ -28,7 +28,7 @@ check_prerequisites() {
     local required_files=(
         "pyproject.toml"
         "poetry.lock"
-        "src/warren_bot/__init__.py"
+        "src/stockyard/__init__.py"
         "Dockerfile"
     )
     
@@ -121,7 +121,7 @@ test_image() {
     
     # Test 1: Basic import test
     echo -e "${BLUE}📋 Testing Python imports...${NC}"
-    if docker run --rm --read-only "$IMAGE_NAME:latest" python -c "import warren_bot; print('✅ Import test passed')"; then
+    if docker run --rm --read-only "$IMAGE_NAME:latest" python -c "import stockyard; print('✅ Import test passed')"; then
         echo -e "${GREEN}✅ Import test passed${NC}"
     else
         echo -e "${RED}❌ Import test failed${NC}"
@@ -154,7 +154,7 @@ print('✅ Temporary filesystem test passed')
     # Test 4: Health check
     echo -e "${BLUE}❤️  Testing health check...${NC}"
     docker run --rm --read-only "$IMAGE_NAME:latest" \
-        python -c "import warren_bot; import sys; sys.exit(0)" && \
+        python -c "import stockyard; import sys; sys.exit(0)" && \
         echo -e "${GREEN}✅ Health check test passed${NC}"
 }
 

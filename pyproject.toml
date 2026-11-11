@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "warren-bot"
+name = "stockyard"
 version = "0.1.0"
-description = "Investment club chatbot"
+description = "Stock research engine for the Cypress Investment Club (CyIC)"
 authors = ["JA Simmons V <simmonsj@redkeep.com>"]
 license = "LICENSE.md"
 readme = "README.md"
-homepage = "https://github.com/CyIC/warren_bot"
-repository = "https://github.com/CyIC/warren_bot"
+homepage = "https://github.com/CyIC/stockyard"
+repository = "https://github.com/CyIC/stockyard"
 classifiers = [
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
@@ -101,11 +101,11 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/warren_bot"]
+source = ["src/stockyard"]
 branch = true
 omit = [
     "src/tests/*",
-    "src/warren_bot/__main__.py",
+    "src/stockyard/__main__.py",
 ]
 
 [tool.coverage.report]

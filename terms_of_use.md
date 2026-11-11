@@ -13,7 +13,7 @@ accepted its terms.
 ## Privacy policy
 
 Before you continue using our website or services, we advise you to read our 
-[privacy policy](https://github.com/CyIC/warren_bot/blob/main/PRIVACY.md) regarding our data collection. It will help 
+[privacy policy](https://github.com/CyIC/stockyard/blob/main/PRIVACY.md) regarding our data collection. It will help 
 you better understand our practices.
 
 ## Intellectual property
