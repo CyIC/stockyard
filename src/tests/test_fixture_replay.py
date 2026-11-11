@@ -10,7 +10,8 @@ import pandas.testing as pdt
 
 from stockyard.data.snapshot import fetch_stock_data
 from tests import test_snapshot
-from tests.fixture_replay import RecordingTicker, ReplayTicker, load_stock_data, save_recording
+from stockyard.data.cache import RecordingTicker, ReplayTicker
+from tests.fixture_replay import load_stock_data, save_recording
 
 
 def _record(fake):

@@ -17,7 +17,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import yfinance as yf  # noqa: E402  pylint: disable=C0413
 
 from stockyard.data.snapshot import fetch_stock_data  # noqa: E402  pylint: disable=C0413
-from tests.fixture_replay import FIXTURES_DIR, RecordingTicker, save_recording  # noqa: E402  pylint: disable=C0413
+from stockyard.data.cache import RecordingTicker  # noqa: E402  pylint: disable=C0413
+from tests.fixture_replay import FIXTURES_DIR, save_recording  # noqa: E402  pylint: disable=C0413
 
 
 def _record_one(raw, ticker_factory):
