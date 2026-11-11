@@ -49,28 +49,28 @@ def past_sales_records(income_statement):
     # Past Sales Records
     sales_per_year = income_statement["totalRevenue"]
     # Last year and year before sales
-    recent_sales_trend = (sales_per_year[-1] + sales_per_year[-2]) / 2
+    recent_sales_trend = (sales_per_year.iloc[-1] + sales_per_year.iloc[-2]) / 2
     # Years 5 and 6 sales
-    past_sales_trend = (sales_per_year[0] + sales_per_year[1]) / 2
+    past_sales_trend = (sales_per_year.iloc[0] + sales_per_year.iloc[1]) / 2
     sales_increase = recent_sales_trend - past_sales_trend
     sales_percent_increase = sales_increase / past_sales_trend
-    compound_annual_sales_growth_rate = pow((sales_per_year[-1] / sales_per_year[0]), 1 / YRS_LOOKBACK) - 1
+    compound_annual_sales_growth_rate = pow((sales_per_year.iloc[-1] / sales_per_year.iloc[0]), 1 / YRS_LOOKBACK) - 1
     # display table
     past_sales_record_table = PrettyTable(float_format=".4")
     past_sales_record_table.header = False
     past_sales_record_table.border = False
-    past_sales_record_table.add_row(["Sales for most recent year", "${:20,.0f}".format(sales_per_year[-1])])
-    past_sales_record_table.add_row(["Sales for next most recent year", "${:20,.0f}".format(sales_per_year[-2])])
+    past_sales_record_table.add_row(["Sales for most recent year", "${:20,.0f}".format(sales_per_year.iloc[-1])])
+    past_sales_record_table.add_row(["Sales for next most recent year", "${:20,.0f}".format(sales_per_year.iloc[-2])])
     past_sales_record_table.add_row(
         [
             "Sales for {} years ago".format(YRS_LOOKBACK - 1),
-            "${:20,.0f}".format(sales_per_year[1]),
+            "${:20,.0f}".format(sales_per_year.iloc[1]),
         ]
     )
     past_sales_record_table.add_row(
         [
             f"Sales for {YRS_LOOKBACK} years ago",
-            f"${sales_per_year[0]:20,.0f}",
+            f"${sales_per_year.iloc[0]:20,.0f}",
         ]
     )
     past_sales_record_table.add_row(["% increase in sales", f"{sales_percent_increase.round(4):.3%}"])
@@ -155,7 +155,7 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
     quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=5)]
 
     # get current stock prices
-    present_price = daily_prices["close"][-1]
+    present_price = daily_prices["close"].iloc[-1]
     # get current eps
     present_eps = quarterly_eps.iloc[-1]["reportedEPS"]
     # get monthly prices
@@ -190,7 +190,7 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
         high_prices.append(high)
         low = float(monthly_prices.loc[yr.strftime("%Y")]["low"].min())
         low_prices.append(low)
-        eps = eps_per_year.loc[yr][-1]
+        eps = eps_per_year.loc[yr].iloc[-1]
         pe_high.append(high / eps)
         pe_low.append(low / eps)
         div_per_share = monthly_prices.loc[yr.strftime("%Y")]["dividend_amt"].sum()
@@ -245,9 +245,9 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
     # Past Sales Records  ********** get sales_percent_increase  ****************
     sales_per_year = income_statement["annualReports"]["totalRevenue"]
     # Last year and year before sales
-    recent_sales_trend = (sales_per_year[-1] + sales_per_year[-2]) / 2
+    recent_sales_trend = (sales_per_year.iloc[-1] + sales_per_year.iloc[-2]) / 2
     # Years 5 and 6 sales
-    past_sales_trend = (sales_per_year[0] + sales_per_year[1]) / 2
+    past_sales_trend = (sales_per_year.iloc[0] + sales_per_year.iloc[1]) / 2
     sales_increase = recent_sales_trend - past_sales_trend
     sales_percent_increase = sales_increase / past_sales_trend
 
@@ -256,7 +256,7 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
     # Years 4 and 5 EPS
     past_eps_mean = (eps_per_year.iloc[1] + eps_per_year.iloc[0]) / 2
     eps_increase = recent_eps_mean - past_eps_mean
-    eps_percent_increase = eps_increase[0] / past_eps_mean[0]
+    eps_percent_increase = eps_increase.iloc[0] / past_eps_mean.iloc[0]
 
     y.add_row(
         [
@@ -354,8 +354,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     cash_table.align = "r"
     cash_table.align[""] = "l"
 
-    new_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"][-1]
-    old_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"][-2]
+    new_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"].iloc[-1]
+    old_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"].iloc[-2]
     diff_cash, percent_diff_cash = populate_vars(old_cash, new_cash)
     cash_table.add_row(
         [
@@ -367,8 +367,8 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
 
-    new_investments = annual_reports["shortTermInvestments"][-1]
-    old_investments = annual_reports["shortTermInvestments"][-2]
+    new_investments = annual_reports["shortTermInvestments"].iloc[-1]
+    old_investments = annual_reports["shortTermInvestments"].iloc[-2]
     diff_investments, percent_diff_investments = populate_vars(old_investments, new_investments)
     cash_table.add_row(
         [
@@ -393,8 +393,8 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
 
-    new_long_term_debt = annual_reports["longTermDebt"][-1]
-    old_long_term_debt = annual_reports["longTermDebt"][-2]
+    new_long_term_debt = annual_reports["longTermDebt"].iloc[-1]
+    old_long_term_debt = annual_reports["longTermDebt"].iloc[-2]
     diff_lt_debt, percent_diff_lt_debt = populate_vars(old_long_term_debt, new_long_term_debt)
     cash_table.add_row(["", "", "", "", ""])
     cash_table.add_row(
@@ -422,8 +422,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     )
     # add shares outstanding
     cash_table.add_row(["", "", "", "", ""])
-    new_shares = annual_reports["commonStockSharesOutstanding"][-1]
-    old_shares = annual_reports["commonStockSharesOutstanding"][-2]
+    new_shares = annual_reports["commonStockSharesOutstanding"].iloc[-1]
+    old_shares = annual_reports["commonStockSharesOutstanding"].iloc[-2]
     diff_shares, percent_diff_shares = populate_vars(old_shares, new_shares)
     cash_table.add_row(
         [
@@ -474,8 +474,8 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
 
-    old_receivables = annual_reports["currentNetReceivables"][-2]
-    new_receivables = annual_reports["currentNetReceivables"][-1]
+    old_receivables = annual_reports["currentNetReceivables"].iloc[-2]
+    new_receivables = annual_reports["currentNetReceivables"].iloc[-1]
     diff_receivables, percent_diff_receivables = populate_vars(old_receivables, new_receivables)
     avl_table.add_row(
         [
@@ -486,8 +486,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_receivables:.4%}",
         ]
     )
-    old_inventories = annual_reports["inventory"][-2]
-    new_inventories = annual_reports["inventory"][-1]
+    old_inventories = annual_reports["inventory"].iloc[-2]
+    new_inventories = annual_reports["inventory"].iloc[-1]
     diff_inventories, percent_diff_inventories = populate_vars(old_inventories, new_inventories)
     avl_table.add_row(
         [
@@ -498,8 +498,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_inventories:.4%}",
         ]
     )
-    old_other_assets = annual_reports["otherCurrentAssets"][-2]
-    new_other_assets = annual_reports["otherCurrentAssets"][-1]
+    old_other_assets = annual_reports["otherCurrentAssets"].iloc[-2]
+    new_other_assets = annual_reports["otherCurrentAssets"].iloc[-1]
     diff_other_assets, percent_diff_other_assets = populate_vars(old_other_assets, new_other_assets)
     avl_table.add_row(
         [
@@ -510,8 +510,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_other_assets:.4%}",
         ]
     )
-    old_current_assets = annual_reports["totalCurrentAssets"][-2]
-    new_current_assets = annual_reports["totalCurrentAssets"][-1]
+    old_current_assets = annual_reports["totalCurrentAssets"].iloc[-2]
+    new_current_assets = annual_reports["totalCurrentAssets"].iloc[-1]
     diff_current_assets, percent_diff_current_assets = populate_vars(old_current_assets, new_current_assets)
     avl_table.add_row(
         [
@@ -538,8 +538,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     avl_table.align = "r"
     avl_table.align[""] = "l"
     avl_table.add_row(["---Liabilities---", "", "", "", ""])
-    old_payables = annual_reports["currentAccountsPayable"][0]
-    new_payables = annual_reports["currentAccountsPayable"][-1]
+    old_payables = annual_reports["currentAccountsPayable"].iloc[0]
+    new_payables = annual_reports["currentAccountsPayable"].iloc[-1]
     diff_payables, percent_diff_payables = populate_vars(old_payables, new_payables)
     avl_table.add_row(
         [
@@ -550,8 +550,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_payables:.3%}",
         ]
     )
-    old_st_debt = annual_reports["shortTermDebt"][-2]
-    new_st_debt = annual_reports["shortTermDebt"][-1]
+    old_st_debt = annual_reports["shortTermDebt"].iloc[-2]
+    new_st_debt = annual_reports["shortTermDebt"].iloc[-1]
     diff_st_debt, percent_diff_st_debt = populate_vars(old_st_debt, new_st_debt)
     avl_table.add_row(
         [
@@ -562,8 +562,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_st_debt:.4%}",
         ]
     )
-    old_other_liabilities = annual_reports["otherCurrentLiabilities"][-2]
-    new_other_liabilities = annual_reports["otherCurrentLiabilities"][-1]
+    old_other_liabilities = annual_reports["otherCurrentLiabilities"].iloc[-2]
+    new_other_liabilities = annual_reports["otherCurrentLiabilities"].iloc[-1]
     diff_other_liabilities, percent_diff_other_liabilities = populate_vars(old_other_liabilities, new_other_liabilities)
     avl_table.add_row(
         [
@@ -574,8 +574,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_other_liabilities:.3%}",
         ]
     )
-    old_current_liabilities = annual_reports["totalCurrentLiabilities"][-2]
-    new_current_liabilities = annual_reports["totalCurrentLiabilities"][-1]
+    old_current_liabilities = annual_reports["totalCurrentLiabilities"].iloc[-2]
+    new_current_liabilities = annual_reports["totalCurrentLiabilities"].iloc[-1]
     diff_current_liabilities, percent_diff_current_liabilities = populate_vars(
         old_current_liabilities, new_current_liabilities
     )
@@ -663,7 +663,7 @@ def revenue_growth(
     msg += f"```{revenue}```"
     msg += f"```Average Growth: {revenue['%_change'].mean():.3%}```"
     msg += f"```div yield: {dividend_yield:.3f}```"
-    current_price = daily_prices["close"][-1]
+    current_price = daily_prices["close"].iloc[-1]
     current_pe = current_price / current_eps
     msg += f"```Current P/E: {current_pe:.4f}```"
     msg += "```Growth Rate w/ Dividends: {:.3f}```".format(
@@ -791,7 +791,7 @@ def risk_reward(
     :return:
     """
     msg = "\n__**Evaluating Risk & Reward**__"
-    present_price = float(daily_prices["close"][-1])
+    present_price = float(daily_prices["close"].iloc[-1])
     files = []
     # Build PE High
     yearly_eps = eps["annualEarnings"]
@@ -802,7 +802,7 @@ def risk_reward(
     div_per_share = []
     for yr in yearly_eps.index:
         high = float(monthly_company_prices.loc[yr.strftime("%Y")]["high"].max())
-        newest_eps = yearly_eps.loc[yr.strftime("%Y")]["reportedEPS"][-1]
+        newest_eps = yearly_eps.loc[yr.strftime("%Y")]["reportedEPS"].iloc[-1]
         div_per_share.append(monthly_company_prices.loc[yr.strftime("%Y")]["dividend_amt"].sum())
         pe_high.append(high / newest_eps)
     pe_high = pd.Series(pe_high, index=yearly_eps.index)
@@ -993,8 +993,8 @@ async def run(message, ticker):
             daily_company_prices,
             cash_flow,
             income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"][-1],
-            balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
+            earnings["quarterlyEarnings"]["reportedEPS"].iloc[-1],
+            balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[-1],
         )
     )
     await message.channel.send(earnings_growth(cash_flow))

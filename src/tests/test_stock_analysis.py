@@ -5,6 +5,7 @@ import asyncio
 import datetime
 import json
 import unittest
+import warnings
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -139,8 +140,8 @@ class StockAnalysisTestCase(unittest.TestCase):
             daily_prices,
             cash_flow,
             income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"][-1],
-            balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
+            earnings["quarterlyEarnings"]["reportedEPS"].iloc[-1],
+            balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[-1],
         )
 
         # THEN
@@ -155,13 +156,15 @@ class StockAnalysisTestCase(unittest.TestCase):
         earnings = _load_earnings("./src/tests/IBM.earnings.json")
 
         # WHEN
-        msg, charts = stock_analysis.risk_reward(
-            daily_prices,
-            earnings,
-            monthly_prices,
-            income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"][-1],  # stand in for highest EPS
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", FutureWarning)
+            msg, charts = stock_analysis.risk_reward(
+                daily_prices,
+                earnings,
+                monthly_prices,
+                income_statement,
+                earnings["quarterlyEarnings"]["reportedEPS"].iloc[-1],  # stand in for highest EPS
+            )
         # THEN
         self.assertIsInstance(msg, str)
         self.assertIsInstance(charts, list)
