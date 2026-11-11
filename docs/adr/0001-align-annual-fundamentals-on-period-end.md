@@ -47,3 +47,23 @@ Dec-31 assumption remains.
   intentionally left on raw frames.
 - Semiannual filers (2 periods/year) never satisfy the hard 4-quarter completeness rule and are
   explicitly out of scope until needed.
+## Amendment (2026-11-11, v1 design review)
+
+Independent review found that the original decision cannot be implemented against yfinance as written.
+The core decision (income-statement period-end is the single source of truth) stands; these parts
+change:
+
+- **Threshold.** yfinance supplies about five annual statements, so `sufficient_history` requires
+  `YRS_LOOKBACK` (5) Complete Fiscal Years, not `YRS_LOOKBACK + 1`. Growth across n years spans n − 1
+  periods.
+- **Quarter-ends are derived** from the annual period-ends (−9, −6, −3 months), because
+  `quarterly_financials` holds only about five quarters while EPS history is longer. Each announcement
+  is attributed to the latest derived quarter-end strictly before it and within 120 days; ties keep the
+  earliest; unattributable announcements are dropped with a warning.
+- **Scope extends** to the balance sheet and cash flow (no synthetic `YYYY-12-31` annual rows built from
+  quarters) and to price windows (each fiscal year's high/low come from that fiscal year's daily bars).
+- **Location and shape.** The builder is `stockyard.data.fundamentals.aligned_annual_fundamentals(data,
+  as_of)` returning typed results, not `get_aligned_annual_fundamentals(ticker)` in
+  `yfinance_integration.py` returning DataFrames.
+
+Full specification: `docs/design/v1.md` §5.2.

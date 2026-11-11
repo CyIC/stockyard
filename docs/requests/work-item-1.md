@@ -2,6 +2,8 @@
 
 > Sharpened request for GitLab work item #1 (`cyic/warren_bot`). See `docs/adr/0001-align-annual-fundamentals-on-period-end.md` and `CONTEXT.md`.
 
+> **Superseded in part (2026-11-11):** the algorithm, threshold and location below were amended for v1. See ADR-0001's amendment and `docs/design/v1.md` §5.2. Kept for history.
+
 ## Summary
 
 The `!stock_report` output compares **revenue** (from `stock.financials`, real fiscal period-end
