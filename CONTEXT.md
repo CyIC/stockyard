@@ -21,20 +21,23 @@ Reported EPS is the sum of its four quarterly Reported EPS values. Reported EPS 
 Fiscal Year, not the definer of one.
 
 ### Complete Fiscal Year
-A Fiscal Year for which all four quarterly period-ends are present. Only Complete Fiscal Years that
-have *both* a revenue and an aligned Reported EPS figure appear in the comparable full-year history.
+A Fiscal Year whose four quarterly Reported EPS figures are all present (attributed to derived
+quarter-ends, see ADR-0001 amendment). EPS-based comparisons use only Complete Fiscal Years; revenue and
+net-income comparisons use every Fiscal Year that has an annual statement, including pre-IPO years.
 (The 4-quarter rule is a deliberate simplification; semiannual filers are out of scope for now.)
 
 ### Current Year (in-progress)
-The trailing Fiscal Year with fewer than four reported quarters. Its data is **incomplete** and must
+The Fiscal Year after the last annual statement: fewer than four reported quarters, or four reported
+but its annual statement not yet published ("awaiting annual statement"). Its data is **incomplete** and must
 be presented separately from the comparable full-year history (e.g. "Current FY 2026 — 2 of 4
 quarters reported"), never placed in the "most recent year" slot as if it were a settled figure.
 
 ### Aligned Annual Fundamentals
-The comparable full-year history of the company: Complete Fiscal Years carrying revenue and Reported
-EPS that are guaranteed to refer to the *same* Fiscal Year, because every series is keyed on the
-income-statement period-end date. This is the dataset every year-over-year comparison reads from;
-sections must not re-derive year membership from any other source. See ADR-0001.
+The company's fiscal-year history keyed on the income-statement period-end: one row per Fiscal Year with
+revenue and net income, plus Reported EPS when the year is complete, and the Current Year kept apart.
+Every year-over-year comparison reads from it; sections must not re-derive year membership from any
+other source. See ADR-0001 and its amendment.
+
 ### Stockyard / Warren
 **Stockyard** is the project and its library: the research engine and its front ends. **Warren** is the
 persona members interact with: the Discord bot today, and the AI agent later. Code is named for
@@ -57,7 +60,7 @@ Potential gain versus risk of loss: `(forecast high − present price) / (presen
 
 ### Lynch Ratio (dividend-adjusted PEG)
 Peter Lynch's measure from *One Up on Wall Street* (1989): `(EPS growth % + dividend yield %) / P/E`,
-with both percentages as whole numbers. Below 1 is poor, about 1.5 good, 2 or more very good. Stockyard
+with both percentages as whole numbers. Below 1 is poor, 1.5 okay, 2 or more what you're looking for. Stockyard
 uses the EPS CAGR as the growth rate and reports it in the Revenue Growth section as `lynch_ratio`.
 
 ### History Block

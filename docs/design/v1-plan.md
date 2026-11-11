@@ -1,6 +1,6 @@
 # Stockyard v1.0 — Implementation Plan
 
-Revision 2 (after independent review, 2026-11-11). Companion to `docs/design/v1.md`.
+Revision 3 (signed off with changes by independent review, 2026-11-11; changes applied). Companion to `docs/design/v1.md`.
 
 Every step is red → green → refactor: write the failing test, watch it fail for the right reason, write
 the minimum code to pass, clean up, commit. **No production code without a failing test first**
@@ -22,10 +22,13 @@ Follow-up in this revision: the guard walks every submodule (review finding 14).
 
 1. **Tickers.** `validate_ticker`: accepts `msft`, `BRK.B`, `^GSPC`; rejects `../x`, empty, 16+ chars,
    spaces → `InvalidTicker`.
-2. **Fixture loader without date shifting.** Tests pin `as_of` to the snapshot date; remove `_shift_years`
-   and update the existing calculation tests to pass `as_of` where they relied on the shift.
+2. **Fixture loader without date shifting.** Remove `_shift_years`. New code is tested with `as_of`
+   pinned to the snapshot date. The legacy `stock_analysis` functions still read `datetime.now()` (10
+   places) and take no `as_of`, so their tests freeze the clock at the snapshot date (a fixture patching
+   `stock_analysis.datetime`) until each function is replaced in Phase 4.
 3. **`StockData`** frozen bundle + `fetch_stock_data` (mocked `yf.Ticker`): each dataset fetched once;
-   daily prices start at the oldest annual period's start; no `_earnings_from_basic` fallback.
+   earnings fetched with `limit = 4 × annual periods + 12` (≥ 28); daily prices with dividends start at
+   the oldest annual period's start; no `_earnings_from_basic` fallback.
 4. **`load_stock_data(name)`** builds `StockData` from recorded fixtures.
 5. **Record fixtures** with `scripts/refresh_test_fixtures.py` (network, run once): MSFT (FY ends 30 June)
    and a recent IPO.
@@ -42,7 +45,9 @@ One rule per test, synthetic frames first, then fixtures:
 2. Derived quarter-ends (Dec, Sep-30, Jun-30; 52/53-week end such as 2025-09-27).
 3. Attribution: latest derived quarter-end strictly before announcement, ≤ 120 days; later rows after
    `as_of` ignored; duplicates keep earliest + `eps_duplicate`; orphans dropped + `eps_unattributed`.
-4. Complete vs Current Year (`quarters_reported`).
+4. Fiscal-year rows keep revenue and net income when EPS is incomplete (pre-IPO years); Complete vs
+   Current Year (`quarters_reported` 0–4; 4 of 4 without an annual row → `awaiting_annual_statement`,
+   excluded from comparisons).
 5. `sufficient_history` true at 5 complete years, false at 4.
 6. Balance sheet and cash flow: annual rows only at real period-ends; latest quarter separate.
 7. Fiscal-year price windows `(Pᵢ₋₁, Pᵢ]` from daily bars; partially covered (pre-IPO) years → `null`.
@@ -59,8 +64,9 @@ rules (design §5.7): `cagr`, `pair_increase`, `ttm_eps`, `pe`, `payout`, `high_
 PE 20 → 0.7; a test that fails if fractions are passed where whole-number percentages belong; docstring
 cites Lynch, *One Up on Wall Street*, 1989).
 
-**4.2 Shared `fiscal_year_price_stats`** (high, low, EPS, PE high/low excluding EPS ≤ 0, dividends,
-payout, high yield) per Complete Fiscal Year.
+**4.2 Shared helpers:** `fiscal_year_price_stats` (high, low, EPS, PE high/low excluding EPS ≤ 0,
+dividends per share from the price history, payout, high yield) per Complete Fiscal Year, and
+`ttm_dividends_per_share`. All dividend figures come from this one source (design §5.7).
 
 **4.3 Sections**, one at a time: `fundamentals` → `past_sales` → `past_eps` → `earnings_growth` →
 `cash_position` → `revenue_growth` → `record_of_stock` → `trend` → `risk_reward`. For each:
@@ -73,7 +79,8 @@ payout, high yield) per Complete Fiscal Year.
 
 Section-specific: `revenue_growth` reports dividends per share, yield and `lynch_ratio` (labelled
 "Lynch dividend-adjusted ratio" in text); `risk_reward` uses average of FY lows, 25/50/25 zones, the
-corrected "Forecast high (avg PE × projected EPS)" label, and `null` up/down when price ≤ low.
+corrected "Forecast high (avg PE × projected EPS)" label, `null` up/down when price ≤ low or ≥ forecast
+high, `range_inverted` when a low ≥ forecast high, and price position `below_range`/`above_range`.
 
 ## Phase 5 — Report
 

@@ -56,10 +56,15 @@ change:
 - **Threshold.** yfinance supplies about five annual statements, so `sufficient_history` requires
   `YRS_LOOKBACK` (5) Complete Fiscal Years, not `YRS_LOOKBACK + 1`. Growth across n years spans n − 1
   periods.
-- **Quarter-ends are derived** from the annual period-ends (−9, −6, −3 months), because
+- **Quarter-ends are derived** from the annual period-ends (−9, −6, −3 months; the in-progress year
+  continues +3, +6, +9, +12 months after the last period-end), because
   `quarterly_financials` holds only about five quarters while EPS history is longer. Each announcement
   is attributed to the latest derived quarter-end strictly before it and within 120 days; ties keep the
   earliest; unattributable announcements are dropped with a warning.
+- **Fiscal-year rows are kept without complete EPS.** Revenue and net income per period-end are always
+  present; only EPS comparisons require a Complete Fiscal Year. A year with four quarters but no annual
+  statement yet is the Current Year "awaiting annual statement". The "sum of four quarters" revenue
+  fallback is dropped.
 - **Scope extends** to the balance sheet and cash flow (no synthetic `YYYY-12-31` annual rows built from
   quarters) and to price windows (each fiscal year's high/low come from that fiscal year's daily bars).
 - **Location and shape.** The builder is `stockyard.data.fundamentals.aligned_annual_fundamentals(data,
