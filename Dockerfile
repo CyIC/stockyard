@@ -96,7 +96,7 @@ COPY --from=installer --chown=nonroot:nonroot /app/.venv /app/.venv
 
 # Minimal runtime environment. No PYTHONPATH: the venv on PATH resolves its own
 # site-packages, so this stays correct even if the base Python minor version changes.
-# WARREN_DATA_DIR is where the bot writes charts/pickles/reports (a writable mounted volume
+# STOCKYARD_DATA_DIR is where the bot writes charts/pickles/reports (a writable mounted volume
 # on the read-only root); HOME and MPLCONFIGDIR point at tmpfs so matplotlib/yfinance caches
 # don't hit the read-only filesystem.
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -104,7 +104,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
     HOME="/tmp" \
     MPLCONFIGDIR="/tmp" \
-    WARREN_DATA_DIR="/app/data"
+    STOCKYARD_DATA_DIR="/app/data"
 
 # Run as the Chainguard nonroot user (uid 65532; matches docker-compose.secure.yml)
 USER nonroot

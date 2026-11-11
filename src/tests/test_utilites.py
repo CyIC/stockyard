@@ -43,17 +43,17 @@ class DataPathTestCase(unittest.TestCase):
     """Test the data_path writable-output-dir resolver."""
 
     def test_default_uses_cwd(self):
-        """With WARREN_DATA_DIR unset, paths resolve under the current directory."""
+        """With STOCKYARD_DATA_DIR unset, paths resolve under the current directory."""
         with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("WARREN_DATA_DIR", None)
+            os.environ.pop("STOCKYARD_DATA_DIR", None)
             result = util.data_path("eps_fig.jpg")
         self.assertEqual(result, os.path.join(".", "eps_fig.jpg"))
 
     def test_uses_env_var(self):
-        """WARREN_DATA_DIR relocates output under the configured directory."""
+        """STOCKYARD_DATA_DIR relocates output under the configured directory."""
         tmp = tempfile.mkdtemp()
         try:
-            with mock.patch.dict(os.environ, {"WARREN_DATA_DIR": tmp}):
+            with mock.patch.dict(os.environ, {"STOCKYARD_DATA_DIR": tmp}):
                 result = util.data_path("stocks.pkl")
             self.assertEqual(result, os.path.join(tmp, "stocks.pkl"))
         finally:
@@ -63,7 +63,7 @@ class DataPathTestCase(unittest.TestCase):
         """A nested part (e.g. charts/) has its parent directory created."""
         tmp = tempfile.mkdtemp()
         try:
-            with mock.patch.dict(os.environ, {"WARREN_DATA_DIR": tmp}):
+            with mock.patch.dict(os.environ, {"STOCKYARD_DATA_DIR": tmp}):
                 result = util.data_path("charts", "AAPL_chart.png")
             self.assertEqual(result, os.path.join(tmp, "charts", "AAPL_chart.png"))
             self.assertTrue(os.path.isdir(os.path.join(tmp, "charts")))

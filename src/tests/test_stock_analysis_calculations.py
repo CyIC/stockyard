@@ -561,7 +561,7 @@ def test_risk_reward_forecasts_high_on_an_annual_earnings_basis(tmp_path, monkey
     the two mixes bases and understates the headline target roughly fourfold: 30.0 x 1.00
     instead of 30.0 x 4.00.
     """
-    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("STOCKYARD_DATA_DIR", str(tmp_path))
 
     msg, files = stock_analysis.risk_reward(**_risk_reward_args())
 
@@ -572,7 +572,7 @@ def test_risk_reward_forecasts_high_on_an_annual_earnings_basis(tmp_path, monkey
 
 def test_risk_reward_price_target_matches_the_forecast_high(tmp_path, monkeypatch):
     """The PRICE TARGET line and its appreciation figure derive from the same forecast."""
-    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("STOCKYARD_DATA_DIR", str(tmp_path))
 
     msg, _ = stock_analysis.risk_reward(**_risk_reward_args())
 
@@ -596,7 +596,7 @@ def test_risk_reward_forecast_ignores_quarterly_seasonality(tmp_path, monkeypatc
     window ends on a weak quarter. Fitting the raw quarterly series reads that as decline
     and drives the projection negative; fitting trailing twelve months sees the truth.
     """
-    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("STOCKYARD_DATA_DIR", str(tmp_path))
     args = _risk_reward_args(quarterly_values=SEASONAL_QUARTERS, annual_eps=10.0)
 
     msg, _ = stock_analysis.risk_reward(**args)
@@ -612,7 +612,7 @@ def test_risk_reward_declines_to_report_a_target_when_earnings_trend_negative(tm
     Extrapolating any declining series five years out eventually crosses zero. A negative
     forecast is not a price, so the report should say so rather than quote one.
     """
-    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("STOCKYARD_DATA_DIR", str(tmp_path))
     collapsing = [4.0, 3.0, 2.0, 1.0, 0.5, 0.25, 0.1]
     args = _risk_reward_args(quarterly_values=collapsing, annual_eps=10.0)
 
@@ -632,7 +632,7 @@ def test_risk_reward_handles_too_little_history_for_a_trailing_year(tmp_path, mo
     Fitting trailing twelve months needs four quarters per point, so a young listing that the
     old raw-quarterly fit would have accepted must degrade gracefully rather than crash.
     """
-    monkeypatch.setenv("WARREN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("STOCKYARD_DATA_DIR", str(tmp_path))
     args = _risk_reward_args(quarterly_values=[2.5] * 4, annual_eps=10.0)
 
     msg, files = stock_analysis.risk_reward(**args)

@@ -8,19 +8,20 @@ import configparser
 import logging
 import os
 
+from stockyard.config import Settings
+
 
 def data_path(*parts) -> str:
     """Resolve a writable output path under the configured data directory.
 
-    Reads the WARREN_DATA_DIR environment variable (default: current working directory) so
+    Uses Settings.data_dir (STOCKYARD_DATA_DIR, default: current working directory) so
     file output works on a read-only container root where only a mounted data volume is
     writable. Ensures the returned path's parent directory exists.
 
     :param parts: path components joined under the data dir (e.g. "charts", "AAPL_chart.png")
     :return: path string with its parent directory created
     """
-    base = os.environ.get("WARREN_DATA_DIR", ".")
-    path = os.path.join(base, *parts)
+    path = os.path.join(Settings.from_env().data_dir, *parts)
     parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)
