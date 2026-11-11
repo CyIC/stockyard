@@ -682,25 +682,3 @@ def process_yfinance_annual_company_info(ticker: str, years: int = 5):
     return company_data
 
 
-async def download_stocks(stocks: list):
-    """Download a collection of stocks from yfinance.
-
-    :param stocks: <list> a list of stocks to lookup (or DataFrame with 'ticker' column)
-    :return: pandas.DataFrame of combined stock price data
-    """
-    prices = pd.DataFrame()
-
-    # Handle both list and DataFrame input
-    if hasattr(stocks, "unique"):  # DataFrame case
-        tickers = stocks["ticker"].unique().tolist()
-    else:  # List case
-        tickers = stocks
-
-    for ticker in tickers:
-        tmp_stock = get_daily_yfinance_company_prices(ticker)
-        if not tmp_stock.empty:
-            prices = pd.concat([tmp_stock, prices])
-
-    # Save to pickle for compatibility
-    prices.to_pickle(util.data_path("stocks.pkl"))
-    return prices

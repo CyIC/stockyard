@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Unit testing module for the yfinance_integration module."""
-import asyncio
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -568,34 +567,6 @@ class YfinanceIntegrationTestCase(unittest.TestCase):
         # This should return a yfinance Ticker object
         # We're just testing that it doesn't raise an exception
         self.assertIsNotNone(result)
-
-    @patch("warren_bot.yfinance_integration.pd.DataFrame.to_pickle")
-    @patch("warren_bot.yfinance_integration.get_daily_yfinance_company_prices")
-    def test_download_stocks(self, mock_get_prices, mock_to_pickle):
-        """Test download_stocks method."""
-        # GIVEN
-        mock_price_data = pd.DataFrame(
-            {
-                "open": [150.0, 151.0],
-                "high": [152.0, 153.0],
-                "low": [149.0, 150.0],
-                "close": [151.0, 152.0],
-                "volume": [1000000, 1100000],
-                "ticker": ["AAPL", "AAPL"],
-            }
-        )
-        mock_get_prices.return_value = mock_price_data
-
-        stocks = ["AAPL", "GOOGL"]
-
-        # WHEN
-        result = asyncio.run(yf_api.download_stocks(stocks))
-
-        # THEN
-        self.assertIsInstance(result, pd.DataFrame)
-        # Should be called for each ticker
-        self.assertEqual(mock_get_prices.call_count, 2)
-        mock_to_pickle.assert_called_once()
 
     @patch("warren_bot.yfinance_integration.yf.Ticker")
     def test_process_yfinance_annual_company_info(self, mock_ticker):

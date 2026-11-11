@@ -24,12 +24,8 @@ discord = "^2.3.2"
 pandas = "^2.2.1"
 requests = "^2.31.0"
 yfinance = "^0.2.40"
-scipy = "^1.12.0"
 prettytable = "^3.10.0"
 matplotlib = "^3.8.3"
-jinja2 = "^3.1.3"
-mplfinance = "^0.12.10b0"
-xhtml2pdf = "^0.2.15"
 python-json-logger = "2.0.7"
 
 
@@ -164,10 +160,8 @@ module = [
     "discord.*",
     "pandas.*",
     "matplotlib.*",
-    "mplfinance.*",
     "yfinance.*",
     "prettytable.*",
-    "jinja2.*",
 ]
 ignore_missing_imports = true
 

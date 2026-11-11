@@ -7,7 +7,6 @@ import re
 
 import discord
 
-from warren_bot import portfolio_analysis
 from warren_bot import stock_analysis
 from warren_bot import utilities as utils
 
@@ -19,7 +18,6 @@ DEBUG = False
 commands_help = {
     "!stock_report": "!stock_report <ticker> will return club worksheet calculations of the "
     "provided stock ticker. (also !sr)",
-    "!club_report": "!club_report will deliver the current status of the investment club. (also !cr)",
     "!bug_report": "!bug_report will ",
 }
 
@@ -90,24 +88,6 @@ async def run_stock_report(message):
         raise e
 
 
-async def run_club_report(message):
-    """Build and deliver club report.
-
-    :return:
-    """
-    await message.add_reaction("⏳")
-    try:
-        await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
-        with contextlib.suppress(discord.errors.Forbidden):
-            await message.clear_reaction("⏳")
-        await message.add_reaction("✅")
-    except Exception as e:
-        # await message.clear_reaction("⏳")
-        await message.add_reaction("🛑")
-        await message.reply("\n❌ __**Portfolio Report Failed!**__")
-        raise e
-
-
 async def run_report_bug(message):
     """A method to log and track bug reports from users.
 
@@ -167,19 +147,11 @@ async def on_message(message):
             await help_command(message)
         case "!stock_report" | "!sr":
             await run_stock_report(message)
-        case "!club_report" | "!cr":
-            await run_club_report(message)
         case "!bug":
             await run_report_bug(message)
         case _:
             await message.reply("Command not recognized")
 
 
-async def main():
-    """Run the club report from the command line."""
-    await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
-
-
 if __name__ == "__main__":
     CLIENT.run(token)
-    # asyncio.run(main())

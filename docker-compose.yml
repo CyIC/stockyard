@@ -10,8 +10,6 @@ services:
     
     # Mount volumes for persistent data and configuration
     volumes:
-      - ./club_info.json:/app/club_info.json:ro
-      - ./club_stocks.csv:/app/club_stocks.csv:ro
       - ./data:/app/data
       - ./logs:/app/logs
     

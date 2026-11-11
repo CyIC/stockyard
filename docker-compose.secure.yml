@@ -55,8 +55,6 @@ services:
       - DISCORD_PUBLIC_KEY=${DISCORD_PUBLIC_KEY:-}
       - LOGGING_LEVEL=${LOGGING_LEVEL:-INFO}
       - DEBUG_MODE=${DEBUG_MODE:-false}
-      - CLUB_INFO_FILE=/app/config/club_info.json
-      - CLUB_STOCKS_FILE=/app/config/club_stocks.csv
       # PYTHONPATH intentionally omitted: the venv on PATH resolves its own site-packages,
       # so this stays correct across Python minor-version changes (no hardcoded python3.13).
     
@@ -66,16 +64,6 @@ services:
     
     # Security: Volume mounts with restricted permissions
     volumes:
-      # Configuration files (read-only)
-      - type: bind
-        source: ./club_info.json
-        target: /app/config/club_info.json
-        read_only: true
-      - type: bind
-        source: ./club_stocks.csv
-        target: /app/config/club_stocks.csv
-        read_only: true
-      
       # Data persistence (read-write with restricted access)
       - type: bind
         source: ./data
