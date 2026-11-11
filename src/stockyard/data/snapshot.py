@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import pandas as pd
 import yfinance as yf
 
+from stockyard.data.cache import Cache, RecordingTicker, ReplayTicker
 from stockyard.data.errors import DataUnavailable, UpstreamError
 from stockyard.data.tickers import validate_ticker
 from stockyard.data.yfinance_source import BALANCE_FIELD_MAP, CASHFLOW_FIELD_MAP, INCOME_FIELD_MAP, _remap_columns
@@ -74,18 +75,26 @@ def _prices(stock, income_annual: pd.DataFrame) -> pd.DataFrame:
     return prices.sort_index()
 
 
-def fetch_stock_data(raw_ticker: str, *, ticker_factory: Callable = yf.Ticker) -> StockData:
+def fetch_stock_data(raw_ticker: str, *, ticker_factory: Callable = yf.Ticker, cache: Cache | None = None) -> StockData:
     """Validate the ticker and fetch everything a report needs in one pass.
 
     :param raw_ticker: symbol as typed by a user or agent
     :param ticker_factory: builds the yfinance Ticker (injectable for tests)
+    :param cache: same-day cache; None disables caching (``--no-cache``)
     :raises InvalidTicker: before any network access, if the symbol is not plausible
     :raises UpstreamError: if the data source raises while fetching
     :raises DataUnavailable: if there are neither statements nor prices for the ticker
     """
     ticker = validate_ticker(raw_ticker)
+    cached = cache.load(ticker) if cache is not None else None
+    if cached is not None:
+        stock = ReplayTicker(cached)
+    else:
+        stock = ticker_factory(ticker)
+        if cache is not None:
+            stock = RecordingTicker(stock)
     try:
-        data = _fetch(ticker, ticker_factory(ticker))
+        data = _fetch(ticker, stock)
     except Exception as exc:  # pylint: disable=broad-exception-caught  # any yfinance failure is upstream
         raise UpstreamError(f"fetching {ticker} failed: {exc}") from exc
     statements = (
@@ -98,6 +107,8 @@ def fetch_stock_data(raw_ticker: str, *, ticker_factory: Callable = yf.Ticker) -
     )
     if data.daily_prices.empty and all(frame.empty for frame in statements):
         raise DataUnavailable(f"no statements or prices for {ticker}")
+    if cache is not None and cached is None:
+        cache.save(ticker, stock.to_dict())
     return data
 
 

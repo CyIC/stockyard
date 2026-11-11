@@ -4,6 +4,12 @@
 A cache entry is a recording of exactly the calls fetch_stock_data makes; a hit replays it. Timezones are
 preserved so an evening announcement in New York keeps its local date.
 """
+import datetime
+import json
+import os
+import tempfile
+from pathlib import Path
+
 import pandas as pd
 
 ATTRIBUTES = (
@@ -107,3 +113,36 @@ class ReplayTicker:
     def history(self, **_kwargs):
         """Return the recorded price history."""
         return self._results["history"]
+
+
+class Cache:
+    """One JSON file per ticker under ``<directory>/cache/``, valid for the day it was written.
+
+    ``today`` is the America/New_York calendar day supplied by the front end. Tickers must already be
+    validated (they become file names). Writes are atomic: a temporary file is renamed into place.
+    """
+
+    def __init__(self, directory, *, today: datetime.date):
+        """Cache rooted at ``directory`` (normally Settings.data_dir) for the day ``today``."""
+        self._directory = Path(directory) / "cache"
+        self._today = today.isoformat()
+
+    def _path(self, ticker: str) -> Path:
+        return self._directory / f"{ticker}.json"
+
+    def load(self, ticker: str) -> dict | None:
+        """Return today's recording for ``ticker``, or None on a miss or a stale entry."""
+        path = self._path(ticker)
+        if not path.exists():
+            return None
+        entry = json.loads(path.read_text(encoding="utf-8"))
+        return entry["recording"] if entry["date"] == self._today else None
+
+    def save(self, ticker: str, recording: dict) -> None:
+        """Atomically write today's recording for ``ticker``."""
+        self._directory.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            "w", dir=self._directory, suffix=".tmp", delete=False, encoding="utf-8"
+        ) as handle:
+            json.dump({"date": self._today, "recording": recording}, handle)
+        os.replace(handle.name, self._path(ticker))
