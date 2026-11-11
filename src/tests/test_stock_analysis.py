@@ -3,15 +3,31 @@
 """Test stock_report module for stock analysis."""
 import asyncio
 import datetime
+import types
 import unittest
 import warnings
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
+import pytest
 
 from tests import fixture_loader
 # under test
 from stockyard import stock_analysis
+
+
+class _SnapshotClock(datetime.datetime):
+    """datetime whose now() is the fixture's capture date."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return fixture_loader.anchor()
+
+
+@pytest.fixture(autouse=True)
+def _freeze_legacy_clock(monkeypatch):
+    """Legacy stock_analysis reads datetime.now(); pin it to the snapshot until Phase 4 replaces it."""
+    monkeypatch.setattr(stock_analysis, "datetime", types.SimpleNamespace(datetime=_SnapshotClock))
 
 
 # pylint: disable=E1136

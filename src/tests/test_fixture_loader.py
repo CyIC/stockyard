@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0212
-"""Tests for the drift-proofing behaviour of the yfinance snapshot loader."""
+"""Tests for the yfinance snapshot loader."""
 import datetime
+import types
 
 import pandas as pd
 import pytest
@@ -36,62 +37,43 @@ def test_unknown_dataset_names_report_what_is_available():
         fixture_loader.load("no_such_dataset")
 
 
-@pytest.mark.parametrize("elapsed_years", [0, 1, 4, 9])
-def test_shift_tracks_whole_years_since_the_anchor(elapsed_years):
-    anchor = (datetime.datetime.now() - relativedelta(years=elapsed_years, days=3)).isoformat()
+class _YearsLater(datetime.datetime):
+    """A clock three years after the snapshot was captured."""
 
-    assert fixture_loader._shift_years(anchor) == elapsed_years
-
-
-def test_no_shift_applied_for_a_future_anchor():
-    """A freshly regenerated snapshot must be used exactly as captured."""
-    anchor = (datetime.datetime.now() + relativedelta(months=6)).isoformat()
-
-    assert fixture_loader._shift_years(anchor) == 0
+    @classmethod
+    def now(cls, tz=None):
+        return datetime.datetime.fromisoformat(fixture_loader._snapshot()["anchor"]) + relativedelta(years=3)
 
 
-def test_rebasing_preserves_month_and_day():
-    """Shifting by whole years keeps fiscal year ends on their own calendar date."""
-    payload = {
-        "index_name": "fiscalDateEnding",
-        "index": ["2021-12-31T00:00:00", "2022-06-30T00:00:00"],
-        "columns": ["reportedEPS"],
-        "dtypes": {"reportedEPS": "float64"},
-        "data": [[9.97], [2.31]],
-    }
-
-    frame = fixture_loader._payload_to_frame(payload, shift=3)
-
-    assert [stamp.date() for stamp in frame.index] == [datetime.date(2024, 12, 31), datetime.date(2025, 6, 30)]
-    assert frame["reportedEPS"].tolist() == [9.97, 2.31]
+@pytest.fixture
+def clock_three_years_later(monkeypatch):
+    monkeypatch.setattr(fixture_loader, "datetime", types.SimpleNamespace(datetime=_YearsLater))
 
 
-def test_snapshot_stays_inside_the_five_year_lookback():
-    """The guarantee that makes these fixtures drift-proof.
+def test_dates_are_used_exactly_as_captured_even_years_later(clock_three_years_later):
+    """Design §5.3: tests pin as_of to the snapshot date instead of rebasing data to the clock."""
+    raw = fixture_loader._snapshot()["datasets"]["income_statement"]["annualReports"]["index"]
 
-    stock_analysis filters every input to the last five years. If the snapshot ages past that
-    window the filters silently trim it down and the reports get computed from a handful of
-    rows, which is exactly how the stale Alphavantage fixtures distorted the analysis.
-    """
-    cutoff = datetime.datetime.now() - relativedelta(years=5)
+    frame = fixture_loader.load("income_statement")["annualReports"]
 
-    daily = fixture_loader.load("daily_prices")
-    assert daily.index.max() >= cutoff
-    assert (daily.index >= cutoff).sum() > 1000, "a full five years of daily prices must survive"
+    assert [stamp.isoformat() for stamp in frame.index] == raw
 
-    annual = fixture_loader.load("earnings")["annualEarnings"]
-    assert (annual.index >= cutoff).sum() >= 5, "all five fiscal years must survive the filter"
+
+def test_anchor_is_the_capture_date_even_years_later(clock_three_years_later):
+    captured = datetime.datetime.fromisoformat(fixture_loader._snapshot()["anchor"])
+
+    assert fixture_loader.anchor() == captured
 
 
 def test_price_and_earnings_datasets_stay_aligned():
     """record_of_stock looks up price rows by an earnings row's fiscal year.
 
-    Both datasets get the same shift, so every annual earnings year must still have monthly
-    price rows to match against.
+    Every annual earnings year inside the five-year window before the snapshot must have
+    monthly price rows to match against.
     """
     monthly = fixture_loader.load("monthly_prices")
     annual = fixture_loader.load("earnings")["annualEarnings"]
-    cutoff = datetime.datetime.now() - relativedelta(years=5)
+    cutoff = fixture_loader.anchor() - relativedelta(years=5)
 
     price_years = {stamp.year for stamp in monthly.index}
     for stamp in annual.index[annual.index >= cutoff]:
