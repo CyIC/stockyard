@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
-"""Collection of useful utilities for warren_bot including getting data from alphavantage and processing
-data structures."""
+"""Collection of useful utilities for warren_bot.
+
+Includes getting data from alphavantage and processing data structures.
+"""
+import configparser
 import datetime
 import logging
 import os
-from argparse import ArgumentParser
 from asyncio import sleep
 
 import pandas as pd
@@ -13,13 +15,51 @@ import requests
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 from xhtml2pdf import pisa
 
-try:
-    import ConfigParser as config_parser  # noqa: N813
-except:  # noqa: E722 pylint: disable=bare-except
-    import configparser as config_parser
+import warren_bot
+
+
+def data_path(*parts) -> str:
+    """Resolve a writable output path under the configured data directory.
+
+    Reads the WARREN_DATA_DIR environment variable (default: current working directory) so
+    file output works on a read-only container root where only a mounted data volume is
+    writable. Ensures the returned path's parent directory exists.
+
+    :param parts: path components joined under the data dir (e.g. "charts", "AAPL_chart.png")
+    :return: path string with its parent directory created
+    """
+    base = os.environ.get("WARREN_DATA_DIR", ".")
+    path = os.path.join(base, *parts)
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    return path
+
+
+def load_discord_token() -> str:
+    """Resolve the Discord bot token from the environment, a secret file, or the legacy INI.
+
+    Resolution order (first match wins):
+      1. DISCORD_TOKEN environment variable (e.g. --env-file .env)
+      2. the file named by DISCORD_TOKEN_FILE (Docker/Swarm secret at /run/secrets/...)
+      3. the [discord] token in bot_config.ini in the working directory (local dev fallback)
+
+    :return: the Discord bot token
+    :raises KeyError: if no token is found in any source
+    """
+    token = os.environ.get("DISCORD_TOKEN")
+    if token:
+        return token
+    token_file = os.environ.get("DISCORD_TOKEN_FILE")
+    if token_file:
+        with open(token_file, encoding="utf-8") as handle:
+            return handle.read().strip()
+    parser = configparser.ConfigParser()
+    parser.read("bot_config.ini")
+    return parser["discord"]["token"]
+
 
 # noqa: W503
-
 color_scheme = {
     "index": "#B6B2CF",
     "etf": "#2D3ECF",
@@ -38,7 +78,8 @@ color_scheme = {
     "main_line": "black",
 }
 MAX_MESSAGE_LENGTH = 2000  # Maximum message length allowed by Discord
-LOGGER = logging.getLogger()
+logger = logging.getLogger("discord")
+logger.setLevel(logging.DEBUG)
 
 
 def prep_pipeline(filename: str, encoding: str = "utf_8"):
@@ -129,6 +170,7 @@ async def get_current_sec_10k_revenue(cik: str):
     :param cik:
     :return:
     """
+    revenue = -1
     url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{fix_cik(cik)}.json"
     headers = {
         "user-agent": "Cypress Investment Club simmonsj@jasimmonsv.com",
@@ -172,13 +214,13 @@ async def verify_club_data(data):
     :return data, changed: data is a dict with relevant club data, changed is a <bool> if anything was changed
     """
     changed = False
-    assert "club" in data.keys()
-    assert "name" in data["club"].keys()
-    assert "valuation_dates" in data["club"].keys()
+    assert "club" in data
+    assert "name" in data["club"]
+    assert "valuation_dates" in data["club"]
     # check valuation dates
     assert len(data["club"]["valuation_dates"]) > 0
     # check club stocks
-    assert "club_stocks" in data["club"].keys()
+    assert "club_stocks" in data["club"]
     # check each club stock has verified info
     for stock in data["club"]["club_stocks"].keys():
         cik = fix_cik(data["club"]["club_stocks"][stock]["cik"])
@@ -216,10 +258,9 @@ def draw_club_report(
     stock_price_compare: pd.DataFrame,
     stock_charts: list,
     club_data: dict,
-    reports_dir: str = "./reports/",
+    reports_dir: str = None,
 ):
     # pylint: disable=consider-using-f-string, too-many-locals
-
     """Draw monthly club report.
 
     :param filename: <str> Filename to save report
@@ -231,6 +272,10 @@ def draw_club_report(
     :param reports_dir: <str> optional directory to save reports to
     :return:
     """
+    # Default to a writable data-dir location and create it (read-only container root safe)
+    if reports_dir is None:
+        reports_dir = data_path("reports")
+        os.makedirs(reports_dir, exist_ok=True)
     # Sanity checks for files and folders
     assert os.path.isdir(reports_dir)
     assert os.path.isdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources"))
@@ -343,6 +388,7 @@ def draw_club_report(
             stock_info=stock_info,
             stock_charts=stock_charts,
             portfolio_perfomrance_chart=portfolio_performance_chart,
+            version=warren_bot.__version__,
             avail_capital=f"{avail_capital:,.2f}",
             min_investment=f"{min_investment:,.2f}",
             market_reaction=market_reaction_chart,
@@ -356,93 +402,3 @@ def draw_club_report(
     except Exception as err:
         print(err)
         raise err
-
-
-def process_config_file(cfg_obj=None):
-    """Process passed config file and overwritten passed config dict.
-
-    :param cfg_obj: config object
-        cfg_obj = {
-            "config_file": "./bot_config.ini",
-            "logging_level": "INFO",
-            "discord": {
-                "token": "",
-                "discord_app_id": "",
-                "discord_public_key": "",
-            },
-            "alphavantage": {"key": ""},
-        }
-    :return: overwritten config dict
-    """
-    # Check that config file exists
-    LOGGER.debug("Config file used: %s", cfg_obj["config_file"])
-    if not os.path.exists(cfg_obj["config_file"]):
-        LOGGER.warning("COnfig file does not exist: %s", cfg_obj["config_file"])
-        return cfg_obj
-    config = config_parser.ConfigParser()
-    config.read(cfg_obj["config_file"])
-    # Discord
-    try:
-        cfg_obj["discord"]["token"] = config.get("discord", "token")
-        cfg_obj["discord"]["discord_app_id"] = config.get("discord", "discordAppId")
-        cfg_obj["discord"]["discord_public_key"] = config.get("discord", "discordPublicKey")
-    except config_parser.NoOptionError:
-        LOGGER.error("Could not read discord configuration.")
-    # Alphavantage
-    try:
-        cfg_obj["alphavantage"]["key"] = config.get("alphavantage", "key")
-    except config_parser.NoOptionError:
-        LOGGER.error("Could not read alphavantage configuration.")
-    # Logging Level
-    try:
-        cfg_obj["logging_level"] = config.get("bot", "logging_level")
-    except config_parser.NoOptionError:
-        LOGGER.error("Could not read logging_level configuration.")
-    return cfg_obj
-
-
-def process_env_variables(config):  # pylint: disable=too-many-branches
-    """Process OS environmental variables.
-
-    :param config: config object
-        config = {
-            "config_file": "./bot_config.ini",
-            "logging_level": "INFO",
-            "discord": {
-                "token": "",
-                "discord_app_id": "",
-                "discord_public_key": "",
-            },
-            "alphavantage": {"key": ""},
-        }
-    :return: overwritten config dict
-    """
-    # os_env = ["WARREN_CONFIG", "DISCORD_TOKEN", "DISCORD_APP_ID", "DISCORD_PUB_KEY", "ALPHAVANTAGE_KEY"]
-    if os.getenv("WARREN_CONFIG"):
-        config["config_file"] = os.getenv("WARREN_CONFIG")
-    if os.getenv("DISCORD_TOKEN"):
-        config["discord"]["token"] = os.getenv("DISCORD_TOKEN")
-    # TODO finish for all os_env
-    return config
-
-
-def process_cli(config: dict, cli: ArgumentParser):
-    """
-
-    :param config:
-    :param cli:
-    :return:
-    """
-    if cli.config is not None:
-        config["config_file"] = cli.config
-    # TODO finish for all parsed args
-
-
-def parse_args(args):
-    """
-
-    :param args:
-    :return:
-    """
-    # TODO parse the cli args
-    return True

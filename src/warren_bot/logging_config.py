@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-""" Centralized logging configuration file.
+"""Centralized logging configuration file.
 
 See LICENSE.md for license info.
 """
 import logging.config
 import os
-import sys  # noqa: F401 pylint: disable=unused-import
 
 from pythonjsonlogger import jsonlogger  # noqa: F401 pylint: disable=unused-import
 
@@ -32,10 +31,7 @@ def set_logging_level(level):
     return rtn_level
 
 
-if "LOGGING" in os.environ:
-    LOGGING_LEVEL = os.environ["LOGGING"]
-else:
-    LOGGING_LEVEL = "INFO"
+LOGGING_LEVEL = os.environ.get("LOGGING", "INFO")
 LOGGING_LEVEL = set_logging_level(LOGGING_LEVEL)
 
 LOGGING = {

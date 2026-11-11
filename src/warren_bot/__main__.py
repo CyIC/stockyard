@@ -1,25 +1,22 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Discord chatbot entrypoint."""
-import configparser
+import contextlib
 import logging
 import re
 
 import discord
 
-from . import portfolio_analysis
-from . import stock_analysis
+from warren_bot import portfolio_analysis
+from warren_bot import stock_analysis
+from warren_bot import utilities as utils
 
-
-config = configparser.ConfigParser()
-config.read("./bot_config.ini")
-TOKEN = config["discord"]["token"]
-KEY = config["alphavantage"]["key"]
+token = utils.load_discord_token()
 LOGGER = logging.getLogger("discord")
 
 DEBUG = False
 
-COMMANDS_HELP = {
+commands_help = {
     "!stock_report": "!stock_report <ticker> will return club worksheet calculations of the "
     "provided stock ticker. (also !sr)",
     "!club_report": "!club_report will deliver the current status of the investment club. (also !cr)",
@@ -65,7 +62,7 @@ async def help_command(message):
 
     :param message: Discord Message
     """
-    command_strings = [f"{command}: {description}" for command, description in COMMANDS_HELP.items()]
+    command_strings = [f"{command}: {description}" for command, description in commands_help.items()]
     # Join the command strings with a newline character
     command_list = "\n\n".join(command_strings)
     # Send the message
@@ -74,6 +71,7 @@ async def help_command(message):
 
 
 async def run_stock_report(message):
+    """Build and deliver a stock report for the requested ticker."""
     try:
         ticker = message.content.split(" ", 1)[1]  # Get the stock ticker
         ticker = str.upper(ticker)
@@ -82,13 +80,11 @@ async def run_stock_report(message):
         return
     await message.add_reaction("⏳")
     try:
-        await stock_analysis.run(message, ticker, KEY)
+        await stock_analysis.run(message, ticker)
         await message.channel.send("\n✅ __**Stock Report Finished!**__")
     except Exception as e:
-        try:
+        with contextlib.suppress(discord.errors.Forbidden):
             await message.clear_reaction("⏳")
-        except discord.errors.Forbidden:
-            pass
         await message.add_reaction("🛑")
         await message.reply("\n❌ __**Stock Report Failed!**__")
         raise e
@@ -101,11 +97,9 @@ async def run_club_report(message):
     """
     await message.add_reaction("⏳")
     try:
-        await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", key=KEY)
-        try:
+        await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
+        with contextlib.suppress(discord.errors.Forbidden):
             await message.clear_reaction("⏳")
-        except discord.errors.Forbidden:
-            pass
         await message.add_reaction("✅")
     except Exception as e:
         # await message.clear_reaction("⏳")
@@ -125,10 +119,8 @@ async def run_report_bug(message):
     await message.add_reaction("⏳")
     try:
         # Display bug report
-        try:
+        with contextlib.suppress(discord.errors.Forbidden):
             await message.clear_reaction("⏳")
-        except discord.errors.Forbidden:
-            pass
         await message.add_reaction("✅")
     except Exception as e:
         await message.add_reaction("🛑")
@@ -184,13 +176,10 @@ async def on_message(message):
 
 
 async def main():
-    await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", KEY)
-
-
-def run():
-    CLIENT.run(TOKEN)
+    """Run the club report from the command line."""
+    await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
 
 
 if __name__ == "__main__":
-    CLIENT.run(TOKEN)
+    CLIENT.run(token)
     # asyncio.run(main())

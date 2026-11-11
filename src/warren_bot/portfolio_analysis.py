@@ -14,62 +14,32 @@ from pandas.tseries.offsets import BDay
 
 from warren_bot import analysis
 from warren_bot import utilities as util
-from warren_bot.alphavantage import download_stocks
+from warren_bot.yfinance_integration import download_stocks
 
 logger = logging.getLogger("discord")
 logger.setLevel(logging.DEBUG)
 
 
-async def run(club_stocks_file, club_info_file, key):
-    """Execute club analysis report.
+def _build_meeting_valuation(close: pd.DataFrame, meeting_dates: pd.Series) -> pd.DataFrame:
+    """Pull each meeting date's closing prices into a date-indexed valuation table.
 
-    :return:
+    :param close: DataFrame of closes indexed by date with a column per ticker
+    :param meeting_dates: iterable of meeting date Timestamps
+    :return: DataFrame with one row per meeting date, one column per ticker
     """
-    stocks = pd.read_csv(
-        club_stocks_file,
-        parse_dates=True,
-        index_col="date",
-        encoding="utf_8",
-        encoding_errors="ignore",
-    )
-    total_shares = stocks["shares"].sum()
-    # get club info / check and update club info
-    with open(club_info_file, encoding="utf-8") as json_data:
-        club_data_json = json.load(json_data)
-    club_data, changed = await util.verify_club_data(club_data_json)
-    if changed:
-        with open(club_info_file, "w", encoding="utf-8") as f:
-            json.dump(club_data, f)
-    # get club meeting dates
-    meeting_dates = pd.Series(pd.to_datetime(list(club_data["club"]["valuation_dates"])))
-    # Compare the last meeting day == today - offset to last business day
-    if meeting_dates.iloc[-1].date() != (pd.to_datetime(dt.datetime.today() - BDay())).date():
-        meeting_dates = pd.concat([meeting_dates, pd.Series(pd.to_datetime(dt.datetime.today() - BDay()))])
-    # Read in stock prices, else get new prices from alphavantage
-    try:
-        # check if stocks.pkl is old data
-        local_stock_price_file = "stocks.pkl"
-        if str(dt.datetime.today().date()) != time.strftime(
-            "%Y-%m-%d", time.gmtime(os.path.getmtime(local_stock_price_file))
-        ):
-            prices = await download_stocks(stocks, key)
-        else:
-            prices = pd.read_pickle(local_stock_price_file)
-    except (FileNotFoundError, KeyError):
-        prices = await download_stocks(stocks, key)
-    close = prices.reset_index().pivot(index="date", columns="ticker", values="close")
-
-    # Build table for meeting valuation dates
     meeting_valuation = []
     for date in meeting_dates:
         meeting_valuation.append(close.T[str(date.date())])
-    meeting_valuation = pd.DataFrame(meeting_valuation)
-    # Monthly Stock Price Comparison Reporting
-    last_month = meeting_valuation.iloc[-2]  # Stores last month's valuation stock prices
-    this_month = meeting_valuation.iloc[-1]  # Stores this month's valuation stock prices
-    percent_change = meeting_valuation.pct_change().iloc[-1]
+    return pd.DataFrame(meeting_valuation)
 
-    # Build Stock stats for each stock in portfolio
+
+def _build_stock_stats(stocks: pd.DataFrame, total_shares: float) -> pd.DataFrame:
+    """Aggregate per-ticker cost basis, share count, portfolio weight, and average cost.
+
+    :param stocks: DataFrame of individual purchase lots
+    :param total_shares: total shares held across the whole portfolio
+    :return: DataFrame of stats indexed by ticker
+    """
     stock_stats = pd.DataFrame()
     for x in stocks["ticker"].unique().tolist():
         df = stocks[stocks["ticker"] == x]
@@ -99,7 +69,73 @@ async def run(club_stocks_file, club_info_file, key):
             ],
         )
         stock_stats = pd.concat([stock_stats, other])
-    stock_stats = stock_stats.set_index(["ticker"]).reindex()
+    return stock_stats.set_index(["ticker"]).reindex()
+
+
+async def _load_club_data(club_info_file):
+    """Load club info, normalize it, and persist any changes back to disk.
+
+    The club info file may be mounted read-only (secure container); the normalized data is
+    written back when possible, but a read-only mount must not fail the report.
+
+    :param club_info_file: path to the club_info.json file
+    :return: normalized club_data dict
+    """
+    with open(club_info_file, encoding="utf-8") as json_data:
+        club_data_json = json.load(json_data)
+    club_data, changed = await util.verify_club_data(club_data_json)
+    if changed:
+        try:
+            with open(club_info_file, "w", encoding="utf-8") as f:
+                json.dump(club_data, f)
+        except OSError as exc:
+            logger.warning("Could not persist updated club info to %s: %s", club_info_file, exc)
+    return club_data
+
+
+async def run(club_stocks_file, club_info_file):
+    """Execute club analysis report.
+
+    :return:
+    """
+    stocks = pd.read_csv(
+        club_stocks_file,
+        parse_dates=True,
+        index_col="date",
+        encoding="utf_8",
+        encoding_errors="ignore",
+    )
+    total_shares = stocks["shares"].sum()
+    # get club info / check and update club info
+    club_data = await _load_club_data(club_info_file)
+    # get club meeting dates
+    meeting_dates = pd.Series(pd.to_datetime(list(club_data["club"]["valuation_dates"])))
+    # Compare the last meeting day == today - offset to last business day
+    if meeting_dates.iloc[-1].date() != (pd.to_datetime(dt.datetime.today() - BDay())).date():
+        meeting_dates = pd.concat([meeting_dates, pd.Series(pd.to_datetime(dt.datetime.today() - BDay()))])
+    # Read in stock prices, else get new prices from yfinance
+    try:
+        # check if stocks.pkl is old data
+        local_stock_price_file = util.data_path("stocks.pkl")
+        if str(dt.datetime.today().date()) != time.strftime(
+            "%Y-%m-%d", time.gmtime(os.path.getmtime(local_stock_price_file))
+        ):
+            prices = await download_stocks(stocks)
+        else:
+            prices = pd.read_pickle(local_stock_price_file)
+    except (FileNotFoundError, KeyError):
+        prices = await download_stocks(stocks)
+    close = prices.reset_index().pivot(index="date", columns="ticker", values="close")
+
+    # Build table for meeting valuation dates
+    meeting_valuation = _build_meeting_valuation(close, meeting_dates)
+    # Monthly Stock Price Comparison Reporting
+    last_month = meeting_valuation.iloc[-2]  # Stores last month's valuation stock prices
+    this_month = meeting_valuation.iloc[-1]  # Stores this month's valuation stock prices
+    percent_change = meeting_valuation.pct_change().iloc[-1]
+
+    # Build Stock stats for each stock in portfolio
+    stock_stats = _build_stock_stats(stocks, total_shares)
     print(stock_stats)
     # For display in report
     stock_price_compare = pd.DataFrame(
@@ -118,6 +154,7 @@ async def run(club_stocks_file, club_info_file, key):
     days_back = 180
     stock_charts = []
     for ticker in prices["ticker"].unique().tolist():
+        chart_path = util.data_path("charts", "{}_chart.png".format(ticker))
         stock = prices[prices["ticker"] == ticker].sort_index(ascending=True)
         stock = stock[-days_back:]
         other_plots = [
@@ -139,7 +176,7 @@ async def run(club_stocks_file, club_info_file, key):
             volume_panel=2,
             ylabel_lower="Volume",
             addplot=other_plots,
-            savefig="charts/{}_chart.png".format(ticker),
+            savefig=chart_path,
             vlines={
                 "vlines": meeting_days.tolist(),
                 "linestyle": "dotted",
@@ -149,7 +186,7 @@ async def run(club_stocks_file, club_info_file, key):
             },
             # hlines=dict(hlines=stock_stats['avg_cost'][ticker],linestyle='dashed',colors='r',linewidths=1)
         )
-        stock_charts.append("charts/{}_chart.png".format(ticker))
+        stock_charts.append(chart_path)
 
     # Build club Performance Graph
     club_stats = pd.DataFrame()
