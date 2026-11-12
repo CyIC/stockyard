@@ -82,27 +82,6 @@ class StockAnalysisTestCase(unittest.TestCase):
         for file in files:
             self.assertIsInstance(file, str)
 
-    def test_revenue_growth(self):
-        """Test cash position revenue_growth module."""
-        # GIVEN
-        income_statement = _load_reports("income_statement")
-        daily_prices = _load_prices("daily_prices")
-        cash_flow = _load_reports("cash_flow")
-        earnings = _load_earnings()
-        balance_sheet = _load_reports("balance_sheet")
-
-        # WHEN
-        msg = stock_analysis.revenue_growth(
-            daily_prices,
-            cash_flow,
-            income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"].iloc[-1],
-            balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[-1],
-        )
-
-        # THEN
-        self.assertIsInstance(msg, str)
-
     def test_risk_reward(self):
         """Test cash position risk_reward module."""
         # GIVEN
@@ -170,8 +149,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         ), patch.object(
             stock_analysis, "trend", MagicMock(return_value=("trend", []))
 
-        ), patch.object(
-            stock_analysis, "revenue_growth", MagicMock()
+
 
         ), patch.object(
             stock_analysis, "risk_reward", autospec=True

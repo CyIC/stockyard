@@ -155,55 +155,6 @@ def test_ttm_eps_sums_the_last_four_quarters():
 
 
 # --------------------------------------------------------------------------------------
-# revenue_growth
-# --------------------------------------------------------------------------------------
-def _revenue_growth_args(revenue, close, dividend_payout, shares, current_eps):
-    """Build the five positional arguments revenue_growth consumes."""
-    index = _annual_index(len(revenue))
-    return {
-        "daily_prices": pd.DataFrame({"close": close}, index=_annual_index(len(close))),
-        "cash_flow": {"annualReports": pd.DataFrame({"dividendPayout": dividend_payout}, index=index)},
-        "income_statement": {"annualReports": pd.DataFrame({"totalRevenue": revenue}, index=index)},
-        "current_eps": current_eps,
-        "current_shares_outstanding": shares,
-    }
-
-
-def test_revenue_growth_measures_growth_against_the_prior_year():
-    """Year-over-year growth divides the change by the *previous* year, not the current one.
-
-    Revenue rising 100 -> 120 is 20% growth. Dividing by the current year reports 16.7%,
-    understating every year in the table and the average beneath it.
-    """
-    args = _revenue_growth_args(
-        revenue=[100.0, 120.0, 150.0, 180.0, 200.0],
-        close=[10.0, 20.0, 30.0, 40.0, 50.0],
-        dividend_payout=[0.0, 0.0, 0.0, 0.0, 100.0],
-        shares=200,
-        current_eps=2.0,
-    )
-
-    msg = stock_analysis.revenue_growth(**args)
-
-    expected = np.mean([20.0 / 100.0, 30.0 / 120.0, 30.0 / 150.0, 20.0 / 180.0])
-    assert _pct(_labelled(msg, "Average Growth")) == pytest.approx(expected, abs=1e-4)
-
-
-def test_revenue_growth_divides_price_by_the_supplied_eps():
-    args = _revenue_growth_args(
-        revenue=[100.0, 120.0, 150.0, 180.0, 200.0],
-        close=[10.0, 20.0, 30.0, 40.0, 50.0],
-        dividend_payout=[0.0, 0.0, 0.0, 0.0, 100.0],
-        shares=200,
-        current_eps=2.0,
-    )
-
-    msg = stock_analysis.revenue_growth(**args)
-
-    assert float(_labelled(msg, "Current P/E")) == pytest.approx(50.0 / 2.0)
-
-
-# --------------------------------------------------------------------------------------
 # run() wiring
 # --------------------------------------------------------------------------------------
 def _run_with_mocked_sections(earnings, **section_mocks):
@@ -231,7 +182,6 @@ def _run_with_mocked_sections(earnings, **section_mocks):
     defaults = {
         "record_of_stock": MagicMock(return_value=(["msg"], 5.0)),
         "trend": MagicMock(return_value=("trend", [])),
-        "revenue_growth": MagicMock(),
         "risk_reward": MagicMock(return_value=("risk_reward", [])),
     }
     defaults.update(section_mocks)
@@ -270,27 +220,6 @@ def test_run_posts_past_eps_from_the_new_core(core_stub):
     posted += [str(c.args[0]) for c in message.channel.send.await_args_list if c.args]
     (past_eps_message,) = [m for m in posted if "Past EPS" in m]
     assert "FY2025" in past_eps_message
-
-
-@pytest.mark.usefixtures("core_stub")
-def test_run_passes_trailing_twelve_month_eps_to_revenue_growth():
-    """run() must hand revenue_growth an annual EPS, not a single quarter's.
-
-    revenue_growth divides an annual share price by whatever EPS it is given, so passing one
-    quarter overstates the reported P/E roughly fourfold.
-    """
-    quarterly = _quarterly_eps_fixture([0.50, 0.60, 0.70, 0.80, 0.90])
-    earnings = {
-        "annualEarnings": pd.DataFrame({"reportedEPS": [2.0, 3.0]}, index=_annual_index(2)),
-        "quarterlyEarnings": quarterly,
-    }
-    revenue_growth_mock = MagicMock()
-
-    _run_with_mocked_sections(earnings, revenue_growth=revenue_growth_mock)
-
-    revenue_growth_mock.assert_called_once()
-    passed_eps = revenue_growth_mock.call_args.args[3]
-    assert passed_eps == pytest.approx(0.60 + 0.70 + 0.80 + 0.90)
 
 
 # --------------------------------------------------------------------------------------

@@ -62,3 +62,19 @@ def ttm_dividends_per_share(data: StockData, as_of: datetime.date) -> float | No
         return None
     window = prices[(prices.index.date > start) & (prices.index.date <= as_of)]
     return float(window["dividend"].sum())
+
+
+def present_price(data: StockData, as_of: datetime.date) -> float | None:
+    """The last close on or before ``as_of`` (design §5.3)."""
+    prices = data.daily_prices
+    if prices.empty:
+        return None
+    closes = prices[prices.index.date <= as_of]["close"]
+    return None if closes.empty else float(closes.iloc[-1])
+
+
+def trailing_eps(data: StockData, as_of: datetime.date) -> float | None:
+    """TTM EPS: the last four reported quarters announced on or before ``as_of``."""
+    earnings = data.earnings
+    reported = earnings[earnings.index.date <= as_of]["reported_eps"].dropna() if not earnings.empty else []
+    return definitions.ttm_eps(list(reported))

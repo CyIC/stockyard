@@ -55,3 +55,19 @@ class CashPositionResult:
     quarter_label: str | None
     rows: tuple
     warnings: tuple
+
+
+@dataclass(frozen=True)
+class RevenueGrowthResult:  # pylint: disable=too-many-instance-attributes
+    """Revenue growth plus the valuation figures behind Lynch's dividend-adjusted ratio (D15)."""
+
+    years: tuple  # ((fiscal_year, revenue, change, pct_change), ...)
+    average_growth: float | None
+    ttm_dividends_per_share: float | None
+    dividend_yield: float | None
+    present_price: float | None
+    ttm_eps: float | None
+    current_pe: float | None
+    eps_cagr: float | None
+    lynch_ratio: float | None
+    warnings: tuple

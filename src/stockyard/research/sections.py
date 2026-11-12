@@ -12,12 +12,14 @@ from stockyard.data.fundamentals import AlignedFundamentals
 from stockyard.data.snapshot import StockData
 from stockyard.report_warning import ReportWarning
 from stockyard.research import definitions
+from stockyard.research import price_stats
 from stockyard.research.models import (
     CashPositionResult,
     CashRow,
     EarningsGrowthResult,
     PastEpsResult,
     PastSalesResult,
+    RevenueGrowthResult,
 )
 
 
@@ -82,15 +84,7 @@ def past_eps(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime
 def earnings_growth(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> EarningsGrowthResult:
     """Earnings Growth: net income per fiscal year; % change divides by the absolute prior value."""
     del data, as_of
-    incomes = [(year.fiscal_year, year.net_income) for year in fundamentals.years if year.net_income is not None]
-    rows = []
-    for index, (fiscal_year, income) in enumerate(incomes):
-        if index == 0:
-            rows.append((fiscal_year, income, None, None))
-            continue
-        prior = incomes[index - 1][1]
-        change = income - prior
-        rows.append((fiscal_year, income, change, change / abs(prior) if prior else None))
+    rows = _year_over_year([(y.fiscal_year, y.net_income) for y in fundamentals.years if y.net_income is not None])
     warnings = () if len(rows) >= 2 else (_unavailable("earnings_growth", "change", 2, len(rows), "fiscal years"),)
     return EarningsGrowthResult(years=tuple(rows), warnings=warnings)
 
@@ -214,5 +208,75 @@ def cash_position(data: StockData, fundamentals: AlignedFundamentals, as_of: dat
         prior_label=columns["prior"][0] if "prior" in columns else None,
         quarter_label=columns["quarter"][0] if "quarter" in columns else None,
         rows=tuple(rows),
+        warnings=tuple(warnings),
+    )
+
+
+def _year_over_year(series) -> list:
+    """((fiscal_year, value, change, pct_change), ...) with pct_change relative to the prior value."""
+    rows = []
+    for index, (fiscal_year, value) in enumerate(series):
+        if index == 0:
+            rows.append((fiscal_year, value, None, None))
+            continue
+        prior = series[index - 1][1]
+        rows.append((fiscal_year, value, value - prior, (value - prior) / abs(prior) if prior else None))
+    return rows
+
+
+def revenue_growth(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> RevenueGrowthResult:
+    """Revenue Growth: year-over-year revenue, dividends, current P/E and Lynch's dividend-adjusted ratio."""
+    section = "revenue_growth"
+    warnings = []
+    rows = _year_over_year([(y.fiscal_year, y.revenue) for y in fundamentals.years if y.revenue is not None])
+    changes = [row[3] for row in rows[1:] if row[3] is not None]
+    if not changes:
+        warnings.append(_unavailable(section, "average_growth", 2, len(rows), "fiscal years with revenue"))
+    price = price_stats.present_price(data, as_of)
+    dividends = price_stats.ttm_dividends_per_share(data, as_of)
+    dividend_yield = None if dividends is None or price is None else definitions.dividend_yield(dividends, price)
+    if dividend_yield is None:
+        warnings.append(
+            ReportWarning("figure_unavailable", "dividend_yield needs a year of prices", section, "dividend_yield")
+        )
+    ttm = price_stats.trailing_eps(data, as_of)
+    current_pe = definitions.pe(price, ttm)
+    if current_pe is None:
+        code = "non_positive_eps" if ttm is not None and ttm <= 0 else "figure_unavailable"
+        warnings.append(
+            ReportWarning(
+                code, f"current_pe needs a price and positive TTM EPS (TTM EPS: {ttm})", section, "current_pe"
+            )
+        )
+    complete = [y.reported_eps for y in fundamentals.years if y.complete]
+    eps_cagr = definitions.cagr(complete[0], complete[-1], len(complete) - 1) if len(complete) >= 2 else None
+    if len(complete) < 2:
+        warnings.append(_unavailable(section, "eps_cagr", 2, len(complete), "complete fiscal years"))
+    elif eps_cagr is None:
+        warnings.append(
+            ReportWarning(
+                "non_positive_eps", f"eps_cagr undefined: base year EPS {complete[0]:,.2f}", section, "eps_cagr"
+            )
+        )
+    lynch = definitions.lynch_ratio(eps_cagr, dividend_yield, current_pe)
+    if lynch is None:
+        missing = [
+            name
+            for name, value in (("eps_cagr", eps_cagr), ("dividend_yield", dividend_yield), ("current_pe", current_pe))
+            if value is None
+        ]
+        warnings.append(
+            ReportWarning("figure_unavailable", f"lynch_ratio needs {', '.join(missing)}", section, "lynch_ratio")
+        )
+    return RevenueGrowthResult(
+        years=tuple(rows),
+        average_growth=mean(changes) if changes else None,
+        ttm_dividends_per_share=dividends,
+        dividend_yield=dividend_yield,
+        present_price=price,
+        ttm_eps=ttm,
+        current_pe=current_pe,
+        eps_cagr=eps_cagr,
+        lynch_ratio=lynch,
         warnings=tuple(warnings),
     )

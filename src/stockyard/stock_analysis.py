@@ -231,49 +231,6 @@ def trend(
     return msg, files
 
 
-def revenue_growth(
-    daily_prices: pd.DataFrame,
-    cash_flow: pd.DataFrame,
-    income_statement: pd.DataFrame,
-    current_eps: float,
-    current_shares_outstanding: int,
-):
-    # pylint: disable=C0209
-    """Build Revenue Growth section of report.
-
-    :param daily_prices: <pd.DataFrame> Current Daily Prices for company
-    :param cash_flow: <pd.DataFrame> Current Cash Flow Statement
-    :param income_statement: <pd.DataFrame> Current Income Statement
-    :param current_eps: <float>
-    :param current_shares_outstanding: <int>
-    :return: <str> a message of the section to print
-    """
-    msg = "\n__**Revenue Growth**__"
-    cash_flow = cash_flow["annualReports"]
-    try:
-        dividend_yield = cash_flow["dividendPayout"].iloc[-1] / current_shares_outstanding
-    except TypeError as e:
-        logger.error(e)
-        dividend_yield = 0
-    revenue = income_statement["annualReports"]
-    revenue = pd.DataFrame(revenue["totalRevenue"])
-    revenue_diff = revenue.diff()
-    revenue["change"] = revenue_diff
-    revenue["%_change"] = revenue["totalRevenue"].pct_change()
-
-    pd.options.display.float_format = "{:,.3f}".format
-    msg += f"```{revenue}```"
-    msg += f"```Average Growth: {revenue['%_change'].mean():.3%}```"
-    msg += f"```div yield: {dividend_yield:.3f}```"
-    current_price = daily_prices["close"].iloc[-1]
-    current_pe = current_price / current_eps
-    msg += f"```Current P/E: {current_pe:.4f}```"
-    msg += "```Growth Rate w/ Dividends: {:.3f}```".format(
-        ((revenue["%_change"].mean() * 10) + dividend_yield) / current_pe
-    )
-    return msg
-
-
 def predict_low(high: float, low: float, current_price: float):
     """Build out the table for buy/maybe/sell options.
 
@@ -552,9 +509,7 @@ async def run(message, ticker):
     fundamentals = aligned_annual_fundamentals(data, as_of)
     # Get Company Data
     income_statement = yf_api.get_yfinance_income_statement(ticker)
-    balance_sheet = yf_api.get_yfinance_balance_sheet(ticker)
     earnings = yf_api.get_yfinance_earnings(ticker)
-    cash_flow = yf_api.get_yfinance_cash_flow(ticker)
     # Get company stock prices
     monthly_company_prices = yf_api.get_monthly_yfinance_company_prices(ticker)
     daily_company_prices = yf_api.get_daily_yfinance_company_prices(ticker)
@@ -582,15 +537,7 @@ async def run(message, ticker):
     await utils.send_message_in_chunks(
         message.channel, _discord(text.cash_position(sections.cash_position(data, fundamentals, as_of)))
     )
-    await message.channel.send(
-        revenue_growth(
-            daily_company_prices,
-            cash_flow,
-            income_statement,
-            _ttm_eps(earnings["quarterlyEarnings"]),
-            balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[-1],
-        )
-    )
+    await message.channel.send(_discord(text.revenue_growth(sections.revenue_growth(data, fundamentals, as_of))))
     await message.channel.send(_discord(text.earnings_growth(sections.earnings_growth(data, fundamentals, as_of))))
     # TODO management
     # Risk Reward

@@ -5,7 +5,12 @@ import datetime
 import pytest
 
 from stockyard.data.fundamentals import aligned_annual_fundamentals
-from stockyard.research.price_stats import fiscal_year_price_stats, ttm_dividends_per_share
+from stockyard.research.price_stats import (
+    fiscal_year_price_stats,
+    present_price,
+    trailing_eps,
+    ttm_dividends_per_share,
+)
 from tests.builders import daily_bars, quarterly_eps, stock_data
 
 AS_OF = datetime.date(2026, 11, 11)
@@ -93,3 +98,22 @@ def test_ttm_dividends_sum_the_365_days_up_to_as_of():
 def test_ttm_dividends_are_zero_for_a_non_payer_and_none_without_a_year_of_prices():
     assert ttm_dividends_per_share(stock_data(prices=("2025-01-02", "2026-11-11")), AS_OF) == 0.0
     assert ttm_dividends_per_share(stock_data(prices=("2026-03-02", "2026-11-11")), AS_OF) is None
+
+
+def test_present_price_is_the_last_close_on_or_before_as_of():
+    bars = daily_bars({"2026-11-09": {"close": 50.0}, "2026-11-11": {"close": 60.0}, "2026-11-12": {"close": 70.0}})
+    assert present_price(stock_data(daily=bars), AS_OF) == 60.0
+    assert present_price(stock_data(), AS_OF) is None
+
+
+def test_trailing_eps_sums_the_last_four_reports_on_or_before_as_of():
+    eps = [
+        ("2025-10-20", 1.0),
+        ("2026-01-20", 1.1),
+        ("2026-04-20", 1.2),
+        ("2026-07-20", 1.3),
+        ("2026-10-20", 1.4),
+        ("2026-11-20", 9.0),
+    ]
+    assert trailing_eps(stock_data(eps=eps), AS_OF) == pytest.approx(5.0)
+    assert trailing_eps(stock_data(eps=eps[:3]), AS_OF) is None

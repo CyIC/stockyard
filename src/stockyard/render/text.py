@@ -2,7 +2,13 @@
 """Plain-text rendering of section results, shared by the CLI and (wrapped) Discord (design §6)."""
 from dataclasses import dataclass
 
-from stockyard.research.models import CashPositionResult, EarningsGrowthResult, PastEpsResult, PastSalesResult
+from stockyard.research.models import (
+    CashPositionResult,
+    EarningsGrowthResult,
+    PastEpsResult,
+    PastSalesResult,
+    RevenueGrowthResult,
+)
 
 NA = "n/a"
 
@@ -142,3 +148,29 @@ def cash_position(result: CashPositionResult) -> RenderedSection:
         lines += _table(header, rows)
     lines += _warnings(result.warnings)
     return RenderedSection("Cash Position", "\n".join(lines))
+
+
+LYNCH_READING = "Lynch: below 1 poor, 1.5 okay, 2 or more what you're looking for"
+
+
+def _number(value: float | None) -> str:
+    return NA if value is None else f"{value:,.2f}"
+
+
+def revenue_growth(result: RevenueGrowthResult) -> RenderedSection:
+    """Revenue Growth: revenue by year, then dividends, P/E and Lynch's dividend-adjusted ratio (D15)."""
+    rows = [[fy, _money(revenue), _money(change), _pct(pct)] for fy, revenue, change, pct in result.years]
+    lines = _table(["Fiscal year", "Revenue", "Change", "% change"], rows) + [""]
+    lines += _rows(
+        [
+            ("Average growth", _pct(result.average_growth)),
+            ("Dividends per share (TTM)", _per_share(result.ttm_dividends_per_share)),
+            ("Dividend yield", _pct(result.dividend_yield)),
+            ("EPS growth (CAGR)", _pct(result.eps_cagr)),
+            ("Current P/E (price / TTM EPS)", _number(result.current_pe)),
+            ("Lynch dividend-adjusted ratio", _number(result.lynch_ratio)),
+        ]
+    )
+    lines.append(f"  ({LYNCH_READING})")
+    lines += _warnings(result.warnings)
+    return RenderedSection("Revenue Growth", "\n".join(lines))

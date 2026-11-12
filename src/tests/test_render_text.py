@@ -8,6 +8,7 @@ from stockyard.research.models import (
     EarningsGrowthResult,
     PastEpsResult,
     PastSalesResult,
+    RevenueGrowthResult,
 )
 
 
@@ -127,3 +128,28 @@ def test_cash_position_tables():
     inventory_line = next(line for line in body.splitlines() if line.startswith("Inventory"))
     assert "n/a" in inventory_line
     assert "⚠ FY2025: inventory not reported" in body
+
+
+def test_revenue_growth_shows_lynch_ratio_with_its_reading():
+    result = RevenueGrowthResult(
+        years=(("FY2024", 100.0, None, None), ("FY2025", 125.0, 25.0, 0.25)),
+        average_growth=0.25,
+        ttm_dividends_per_share=2.0,
+        dividend_yield=0.02,
+        present_price=100.0,
+        ttm_eps=5.0,
+        current_pe=20.0,
+        eps_cagr=0.25,
+        lynch_ratio=1.35,
+        warnings=(),
+    )
+    body = text.revenue_growth(result).body
+
+    assert text.revenue_growth(result).title == "Revenue Growth"
+    assert "FY2025" in body and "25.00%" in body
+    assert "Average growth" in body
+    assert "Dividends per share (TTM)" in body and "$2.00" in body
+    assert "Dividend yield" in body and "2.00%" in body
+    assert "Current P/E" in body and "20.00" in body
+    assert "Lynch dividend-adjusted ratio" in body and "1.35" in body
+    assert "below 1 poor, 1.5 okay, 2 or more what you're looking for" in body
