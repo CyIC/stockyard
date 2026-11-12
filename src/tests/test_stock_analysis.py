@@ -49,23 +49,6 @@ def _load_prices(dataset):
 class StockAnalysisTestCase(unittest.TestCase):
     """Test Stock Analysis methods."""
 
-    def test_record_of_stock(self):
-        """Test successfull execution of record of stock method."""
-        # GIVEN
-        eps = _load_earnings()
-        income_statement = _load_reports("income_statement")
-        daily_prices = _load_prices("daily_prices")
-        monthly_prices = _load_prices("monthly_prices")
-
-        # WHEN
-        msg, high_yield = stock_analysis.record_of_stock(eps, income_statement, daily_prices, monthly_prices)
-
-        # THEN
-        self.assertIsInstance(high_yield, float)
-        self.assertIsInstance(msg, list)
-        for chunk in msg:
-            self.assertIsInstance(chunk, str)
-
     def test_trend(self):
         """Test successfull execution of trend method."""
         # GIVEN
@@ -144,8 +127,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         # WHEN / THEN run() completes without a signature TypeError
         with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
             stock_analysis, "utils", utils_mock
-        ), patch.object(
-            stock_analysis, "record_of_stock", MagicMock(return_value=(["msg"], 5.0))
+
         ), patch.object(
             stock_analysis, "trend", MagicMock(return_value=("trend", []))
 
@@ -193,15 +175,12 @@ class StockAnalysisTestCase(unittest.TestCase):
         # WHEN
         with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
             stock_analysis, "utils", utils_mock
-        ), patch.object(stock_analysis, "record_of_stock") as record_mock, patch.object(
-            stock_analysis, "risk_reward"
-        ) as risk_reward_mock:
+        ), patch.object(stock_analysis, "risk_reward") as risk_reward_mock:
             asyncio.run(stock_analysis.run(message, "AAPL"))
 
         # THEN it warned the channel and never reached the earnings-dependent report sections
         message.channel.send.assert_awaited_once()
         self.assertIn("AAPL", str(message.channel.send.await_args))
-        record_mock.assert_not_called()
         risk_reward_mock.assert_not_called()
 
     def test_epoch_seconds(self):

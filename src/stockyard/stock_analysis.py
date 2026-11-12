@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-from prettytable import PrettyTable
 
 from stockyard import utilities as utils
 from stockyard.clock import new_york_today
@@ -25,161 +24,6 @@ logger.setLevel(logging.DEBUG)
 
 float_formatter = "{:0.2f}".format
 np.set_printoptions(formatter={"float_kind": float_formatter})
-
-
-def _ttm_eps(quarterly_earnings):
-    """Trailing twelve month EPS, the annual earnings basis for a P/E ratio.
-
-    :param quarterly_earnings: <pd.DataFrame> quarterly earnings, oldest row first
-    :return: <float> sum of the four most recent reported quarters
-    """
-    return quarterly_earnings["reportedEPS"].iloc[-4:].sum()
-
-
-def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
-    """Build record of stock section of analysis.
-
-    :param eps:
-    :param income_statement:
-    :param stock_price_json:
-    :param monthly_prices:
-    :return: <tuple> (<list> a list of message chunks to print, <float> max high_yield)
-    """
-    # pylint: disable=R0915, R0914, W0212
-    msg = []
-    msg.append("\n__**Record of Stock**__\n")
-
-    # Get only last 5 years of yearly earnings
-    eps_per_year = eps["annualEarnings"]
-    eps_per_year = eps_per_year[eps_per_year.index >= datetime.datetime.now() - relativedelta(years=5)]
-    # Get only last 5 years of quarterly earnings
-    quarterly_eps = eps["quarterlyEarnings"]
-    quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=5)]
-
-    # get current stock prices
-    present_price = daily_prices["close"].iloc[-1]
-    # get current eps on an annual basis, to match the annual EPS the PE columns use
-    present_eps = _ttm_eps(quarterly_eps)
-    # get monthly prices
-    msg.append(f"*Present Price*:\t**{present_price:.3f}**\t*Present EPS*:\t**{present_eps:.3f}**")
-    # Display
-    high_prices = []
-    low_prices = []
-    pe_high = []
-    pe_low = []
-    percent_payout = []
-    high_yield = []
-    eps_table = PrettyTable(
-        [
-            "List Last 5 Years",
-            "High Price",
-            "Low Price",
-            "EPS",
-            "PE Ratio at High",
-            "PE Ratio at Low",
-            "Dividend per Share",
-            "% Payout",
-            "% High Yield",
-        ],
-        float_format=".3",
-    )
-    # x.float_format = '.4'
-    eps_table.align = "r"
-    eps_table.align["PE Ratio at High"] = "c"
-    eps_table.align["PE Ratio at Low"] = "c"
-    for yr in eps_per_year.index:
-        high = float(monthly_prices.loc[yr.strftime("%Y")]["high"].max())
-        high_prices.append(high)
-        low = float(monthly_prices.loc[yr.strftime("%Y")]["low"].min())
-        low_prices.append(low)
-        eps = eps_per_year.loc[yr].iloc[-1]
-        pe_high.append(high / eps)
-        pe_low.append(low / eps)
-        div_per_share = monthly_prices.loc[yr.strftime("%Y")]["dividend_amt"].sum()
-        pct_payout = (div_per_share / eps) * 100
-        percent_payout.append(pct_payout)
-        h_yield = (div_per_share / low) * 100
-        high_yield.append(h_yield)
-        eps_table.add_row(
-            [
-                yr,
-                f"${high:15,.2f}",
-                f"${low:15,.2f}",
-                eps,
-                f"{high / eps:15,.4f}",
-                f"{low / eps:15,.4f}",
-                f"{div_per_share:15,.2f}",
-                f"{pct_payout:15,.2f}",
-                f"{h_yield:15,.2f}",
-            ]
-        )
-    high_prices = pd.Series(high_prices)
-    low_prices = pd.Series(low_prices)
-    pe_high = pd.Series(pe_high)
-    pe_low = pd.Series(pe_low)
-    percent_payout = pd.Series(percent_payout)
-    high_yield = pd.Series(high_yield)
-    eps_table.add_row(
-        [
-            "Averages",
-            f"${high_prices.mean():15,.2f}",
-            f"${low_prices.mean():15,.2f}",
-            "",
-            f"{pe_high.mean():15,.4f}",
-            f"{pe_low.mean():15,.4f}",
-            "",
-            f"{percent_payout.mean():15,.2f}",
-            "",
-        ]
-    )
-    msg.append(f"```{eps_table}```")
-    y = PrettyTable([], float_format=".4")
-    y.header = False
-    # y.border = False
-    y._max_width = {
-        "Field 1": 15,
-        "Field 2": 20,
-        "Field 3": 15,
-        "Field 4": 20,
-        "Field 5": 20,
-        "Field 6": 20,
-    }
-    # Past Sales Records  ********** get sales_percent_increase  ****************
-    sales_per_year = income_statement["annualReports"]["totalRevenue"]
-    # Last year and year before sales
-    recent_sales_trend = (sales_per_year.iloc[-1] + sales_per_year.iloc[-2]) / 2
-    # Years 5 and 6 sales
-    past_sales_trend = (sales_per_year.iloc[0] + sales_per_year.iloc[1]) / 2
-    sales_increase = recent_sales_trend - past_sales_trend
-    sales_percent_increase = sales_increase / past_sales_trend
-
-    # Last year and year before EPS  ************** GET eps_percent_increase *************
-    recent_eps_mean = (eps_per_year.iloc[-1] + eps_per_year.iloc[-2]) / 2
-    # Years 4 and 5 EPS
-    past_eps_mean = (eps_per_year.iloc[1] + eps_per_year.iloc[0]) / 2
-    eps_increase = recent_eps_mean - past_eps_mean
-    eps_percent_increase = eps_increase.iloc[0] / past_eps_mean.iloc[0]
-
-    y.add_row(
-        [
-            f"Present Price % difference then high price {YRS_LOOKBACK} years ago",
-            f"{((present_price - high_prices.values[0]) / high_prices.values[0]):.4%}",
-            "% Increase in Sales",
-            f"{sales_percent_increase:.4%}",
-            "% Increase in Earnings",
-            f"{eps_percent_increase:.4%}",
-        ]
-    )
-    # pylint: disable-next=consider-using-f-string
-    msg.append(
-        "*Average PE Ratio*:\t{:20.4f}\t*Current PE Ratio*\t{:20.4f}".format(
-            pd.concat([pe_high, pe_low]).mean(),
-            present_price / present_eps,
-        )
-    )
-    msg.append(f"```{y}```")
-    msg.append("**% Payout** is `Dividend per share / EPS` \t**% High Yield** is `Dividend per share / Low Price`")
-    return msg, high_yield.max()
 
 
 def trend(
@@ -526,8 +370,10 @@ async def run(message, ticker):
         message.channel, _discord(text.past_sales(sections.past_sales(data, fundamentals, as_of)))
     )
     await message.channel.send(_discord(text.past_eps(sections.past_eps(data, fundamentals, as_of))))
-    msg, high_yield = record_of_stock(earnings, income_statement, daily_company_prices, monthly_company_prices)
-    await utils.send_message_in_chunks(message.channel, msg)
+    record = sections.record_of_stock(data, fundamentals, as_of)
+    await utils.send_message_in_chunks(message.channel, _discord(text.record_of_stock(record)))
+    # Bridge until risk_reward migrates: legacy risk_reward wants the peak high yield in percent units
+    high_yield = max((row.high_yield for row in record.rows if row.high_yield is not None), default=0.0) * 100
     msg, charts = trend(income_statement, earnings, monthly_company_prices)
     await message.channel.send(msg)
     for fig in charts:

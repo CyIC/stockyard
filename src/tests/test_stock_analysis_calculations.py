@@ -12,7 +12,6 @@ import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import matplotlib
-import numpy as np
 import pandas as pd
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -81,6 +80,13 @@ def _annual_index(count):
     return pd.to_datetime([now - relativedelta(years=count - 1 - offset, months=6) for offset in range(count)])
 
 
+def _quarterly_eps_fixture(values):
+    """Build the quarterly earnings frame contract, newest row last."""
+    now = datetime.datetime.now()
+    newest_first = [now - relativedelta(months=3 * (len(values) - 1 - offset)) for offset in range(len(values))]
+    return pd.DataFrame({"reportedEPS": values}, index=pd.to_datetime(newest_first))
+
+
 # --------------------------------------------------------------------------------------
 # predict_low
 # --------------------------------------------------------------------------------------
@@ -138,23 +144,6 @@ def test_zone_analysis_survives_price_equal_to_projected_low():
 
 
 # --------------------------------------------------------------------------------------
-# _ttm_eps
-# --------------------------------------------------------------------------------------
-def _quarterly_eps_fixture(values):
-    """Build the quarterly earnings frame contract, newest row last."""
-    now = datetime.datetime.now()
-    newest_first = [now - relativedelta(months=3 * (len(values) - 1 - offset)) for offset in range(len(values))]
-    return pd.DataFrame({"reportedEPS": values}, index=pd.to_datetime(newest_first))
-
-
-def test_ttm_eps_sums_the_last_four_quarters():
-    """A P/E built off an annual price needs an annual earnings denominator."""
-    quarterly = _quarterly_eps_fixture([0.10, 0.50, 0.60, 0.70, 0.80, 0.90])
-
-    assert stock_analysis._ttm_eps(quarterly) == pytest.approx(0.60 + 0.70 + 0.80 + 0.90)
-
-
-# --------------------------------------------------------------------------------------
 # run() wiring
 # --------------------------------------------------------------------------------------
 def _run_with_mocked_sections(earnings, **section_mocks):
@@ -180,7 +169,6 @@ def _run_with_mocked_sections(earnings, **section_mocks):
     utils_mock.send_message_in_chunks = AsyncMock()
 
     defaults = {
-        "record_of_stock": MagicMock(return_value=(["msg"], 5.0)),
         "trend": MagicMock(return_value=("trend", [])),
         "risk_reward": MagicMock(return_value=("risk_reward", [])),
     }
@@ -220,76 +208,6 @@ def test_run_posts_past_eps_from_the_new_core(core_stub):
     posted += [str(c.args[0]) for c in message.channel.send.await_args_list if c.args]
     (past_eps_message,) = [m for m in posted if "Past EPS" in m]
     assert "FY2025" in past_eps_message
-
-
-# --------------------------------------------------------------------------------------
-# record_of_stock
-# --------------------------------------------------------------------------------------
-def _record_of_stock_args():
-    """Build a five-year fixture with flat annual EPS so the P/E columns are hand-checkable.
-
-    Yearly highs run 100..140 and lows 50..90, annual EPS is a flat 4.00 made up of four
-    1.00 quarters, and the present price is 150.
-    """
-    annual = _annual_index(5)
-    years = [stamp.year for stamp in annual]
-
-    dates = []
-    rows = []
-    for position, year in enumerate(years):
-        for month in range(1, 13):
-            dates.append(datetime.datetime(year, month, 1))
-            rows.append({"high": 100.0 + 10 * position, "low": 50.0 + 10 * position, "dividend_amt": 0.25})
-    monthly_prices = pd.DataFrame(rows, index=pd.to_datetime(dates))
-
-    return {
-        "eps": {
-            "annualEarnings": pd.DataFrame({"reportedEPS": [4.0] * 5}, index=annual),
-            "quarterlyEarnings": _quarterly_eps_fixture([1.0] * 8),
-        },
-        "income_statement": {
-            "annualReports": pd.DataFrame({"totalRevenue": [100.0, 120.0, 150.0, 180.0, 200.0]}, index=annual)
-        },
-        "daily_prices": pd.DataFrame({"close": [140.0, 145.0, 150.0]}, index=_quarterly_eps_fixture([0, 0, 0]).index),
-        "monthly_prices": monthly_prices,
-    }
-
-
-def test_record_of_stock_compares_present_price_to_the_oldest_year_high():
-    """The 'x years ago' comparison must use the oldest year's high, not the newest.
-
-    Reading high_prices[-1] compares the present price against this year's own high, which
-    is near zero by construction and says nothing about five-year appreciation.
-    """
-    msg, _ = stock_analysis.record_of_stock(**_record_of_stock_args())
-
-    cells = _row("\n".join(msg), f"Present Price % difference then high price {stock_analysis.YRS_LOOKBACK} years ago")
-    # present price 150 against the oldest yearly high of 100
-    assert _pct(cells[1]) == pytest.approx((150.0 - 100.0) / 100.0, abs=1e-4)
-
-
-def test_record_of_stock_current_pe_uses_annual_earnings():
-    """Current P/E must sit on the same annual basis as the Average P/E printed beside it.
-
-    Dividing the price by a single 1.00 quarter gives 150; the four quarters that make up
-    the 4.00 annual EPS give 37.5, comparable to the 23.75 average.
-    """
-    msg, _ = stock_analysis.record_of_stock(**_record_of_stock_args())
-    joined = "\n".join(msg)
-
-    average = float(re.search(r"\*Average PE Ratio\*:\s*([\d.,]+)", joined).group(1))
-    current = float(re.search(r"\*Current PE Ratio\*\s*([\d.,]+)", joined).group(1))
-
-    assert average == pytest.approx(23.75)
-    assert current == pytest.approx(150.0 / 4.0)
-
-
-def test_record_of_stock_returns_high_yield_in_percent_units():
-    """risk_reward divides this by 100, so the contract is percent, not a fraction."""
-    _, high_yield = stock_analysis.record_of_stock(**_record_of_stock_args())
-
-    # 12 monthly dividends of 0.25 = 3.00 against the oldest year's low of 50
-    assert high_yield == pytest.approx(3.0 / 50.0 * 100)
 
 
 # --------------------------------------------------------------------------------------

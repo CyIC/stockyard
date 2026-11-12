@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Terminal/text rendering of section results (design §6)."""
+import datetime
+
 from stockyard.render import text
 from stockyard.report_warning import ReportWarning
 from stockyard.research.models import (
@@ -8,8 +10,10 @@ from stockyard.research.models import (
     EarningsGrowthResult,
     PastEpsResult,
     PastSalesResult,
+    RecordOfStockResult,
     RevenueGrowthResult,
 )
+from stockyard.research.price_stats import PriceStatsRow
 
 
 def _past_sales(**overrides):
@@ -153,3 +157,28 @@ def test_revenue_growth_shows_lynch_ratio_with_its_reading():
     assert "Current P/E" in body and "20.00" in body
     assert "Lynch dividend-adjusted ratio" in body and "1.35" in body
     assert "below 1 poor, 1.5 okay, 2 or more what you're looking for" in body
+
+
+def test_record_of_stock_table_and_comparisons():
+    rows = (
+        PriceStatsRow("FY2024", datetime.date(2024, 12, 31), 4.0, None, None, None, None, None, None, None),
+        PriceStatsRow("FY2025", datetime.date(2025, 12, 31), 4.0, 60.0, 30.0, 1.0, 15.0, 7.5, 0.25, 1 / 30),
+    )
+    result = RecordOfStockResult(rows, 60.0, 30.0, 15.0, 7.5, 11.25, 0.25, 50.0, 4.0, 12.5, "FY2025", -1 / 6, ())
+    body = text.record_of_stock(result).body
+    lines = body.splitlines()
+
+    assert text.record_of_stock(result).title == "Record of Stock"
+    assert lines[0].split()[:4] == ["Fiscal", "year", "High", "Low"]
+    assert "FY2024" in lines[1] and "n/a" in lines[1]
+    assert (
+        "FY2025" in lines[2]
+        and "$60.00" in lines[2]
+        and "15.00" in lines[2]
+        and "25.00%" in lines[2]
+        and "3.33%" in lines[2]
+    )
+    assert lines[3].startswith("Averages")
+    assert "Average P/E" in body and "11.25" in body
+    assert "Current P/E (price / TTM EPS)" in body and "12.50" in body
+    assert "Present price vs FY2025 high" in body and "-16.67%" in body

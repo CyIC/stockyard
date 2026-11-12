@@ -71,3 +71,22 @@ class RevenueGrowthResult:  # pylint: disable=too-many-instance-attributes
     eps_cagr: float | None
     lynch_ratio: float | None
     warnings: tuple
+
+
+@dataclass(frozen=True)
+class RecordOfStockResult:  # pylint: disable=too-many-instance-attributes
+    """Fiscal-year price history (shared PriceStatsRow rows), its averages and today's comparison."""
+
+    rows: tuple
+    average_high: float | None
+    average_low: float | None
+    average_pe_high: float | None
+    average_pe_low: float | None
+    average_pe: float | None
+    average_payout: float | None
+    present_price: float | None
+    ttm_eps: float | None
+    current_pe: float | None
+    oldest_fiscal_year: str | None
+    change_from_oldest_high: float | None
+    warnings: tuple

@@ -19,6 +19,7 @@ from stockyard.research.models import (
     EarningsGrowthResult,
     PastEpsResult,
     PastSalesResult,
+    RecordOfStockResult,
     RevenueGrowthResult,
 )
 
@@ -278,5 +279,53 @@ def revenue_growth(data: StockData, fundamentals: AlignedFundamentals, as_of: da
         current_pe=current_pe,
         eps_cagr=eps_cagr,
         lynch_ratio=lynch,
+        warnings=tuple(warnings),
+    )
+
+
+def _mean_of(values) -> float | None:
+    present = [value for value in values if value is not None]
+    return mean(present) if present else None
+
+
+def record_of_stock(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> RecordOfStockResult:
+    """Record of Stock: per fiscal year high, low, EPS, P/E, dividends; averages; present price vs history."""
+    section = "record_of_stock"
+    rows = price_stats.fiscal_year_price_stats(data, fundamentals, as_of)
+    warnings = []
+    for row in rows:
+        if row.high is None:
+            warnings.append(
+                ReportWarning(
+                    "figure_unavailable", f"{row.fiscal_year}: not fully traded; no price figures", section, "prices"
+                )
+            )
+        elif row.eps <= 0:
+            warnings.append(
+                ReportWarning(
+                    "non_positive_eps",
+                    f"{row.fiscal_year}: EPS {row.eps:,.2f}; left out of P/E averages",
+                    section,
+                    "pe",
+                )
+            )
+    if not rows:
+        warnings.append(_unavailable(section, "rows", 1, 0, "complete fiscal years"))
+    price = price_stats.present_price(data, as_of)
+    ttm = price_stats.trailing_eps(data, as_of)
+    oldest = next((row for row in rows if row.high is not None), None)
+    return RecordOfStockResult(
+        rows=rows,
+        average_high=_mean_of(row.high for row in rows),
+        average_low=_mean_of(row.low for row in rows),
+        average_pe_high=_mean_of(row.pe_high for row in rows),
+        average_pe_low=_mean_of(row.pe_low for row in rows),
+        average_pe=_mean_of([row.pe_high for row in rows] + [row.pe_low for row in rows]),
+        average_payout=_mean_of(row.payout for row in rows),
+        present_price=price,
+        ttm_eps=ttm,
+        current_pe=definitions.pe(price, ttm),
+        oldest_fiscal_year=oldest.fiscal_year if oldest else None,
+        change_from_oldest_high=definitions.appreciation(price, oldest.high) if oldest and price is not None else None,
         warnings=tuple(warnings),
     )

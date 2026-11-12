@@ -7,6 +7,7 @@ from stockyard.research.models import (
     EarningsGrowthResult,
     PastEpsResult,
     PastSalesResult,
+    RecordOfStockResult,
     RevenueGrowthResult,
 )
 
@@ -174,3 +175,47 @@ def revenue_growth(result: RevenueGrowthResult) -> RenderedSection:
     lines.append(f"  ({LYNCH_READING})")
     lines += _warnings(result.warnings)
     return RenderedSection("Revenue Growth", "\n".join(lines))
+
+
+def record_of_stock(result: RecordOfStockResult) -> RenderedSection:
+    """Record of Stock: per fiscal year prices, EPS, P/E and dividends; averages; today against history."""
+    header = ["Fiscal year", "High", "Low", "EPS", "P/E high", "P/E low", "Dividends", "% payout", "% high yield"]
+    rows = [
+        [
+            row.fiscal_year,
+            _per_share(row.high),
+            _per_share(row.low),
+            _per_share(row.eps),
+            _number(row.pe_high),
+            _number(row.pe_low),
+            _per_share(row.dividends_per_share),
+            _pct(row.payout),
+            _pct(row.high_yield),
+        ]
+        for row in result.rows
+    ]
+    rows.append(
+        [
+            "Averages",
+            _per_share(result.average_high),
+            _per_share(result.average_low),
+            "",
+            _number(result.average_pe_high),
+            _number(result.average_pe_low),
+            "",
+            _pct(result.average_payout),
+            "",
+        ]
+    )
+    lines = _table(header, rows) + [""]
+    lines += _rows(
+        [
+            ("Present price", _per_share(result.present_price)),
+            ("EPS (TTM)", _per_share(result.ttm_eps)),
+            ("Average P/E", _number(result.average_pe)),
+            ("Current P/E (price / TTM EPS)", _number(result.current_pe)),
+            (f"Present price vs {result.oldest_fiscal_year or NA} high", _pct(result.change_from_oldest_high)),
+        ]
+    )
+    lines += _warnings(result.warnings)
+    return RenderedSection("Record of Stock", "\n".join(lines))
