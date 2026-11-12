@@ -1,0 +1,73 @@
+{
+    "name": "warren_bot",
+    "build": {
+        "dockerfile": "Dockerfile",
+        // Context is .devcontainer/ only. The Dockerfile COPYs nothing from the repo, so a
+        // narrow context keeps the build fast and avoids shipping the workspace to the daemon.
+        "context": "."
+    },
+
+    "features": {
+        // Shares the host's Docker daemon so `docker build`, docker-compose and
+        // scripts/build-secure.sh work from inside the container against ../Dockerfile.
+        // This grants the container access to the host daemon, which is equivalent to root
+        // on the host -- the tradeoff accepted when choosing this over Docker-in-Docker.
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    },
+
+    "mounts": [
+        // The host is Windows. Its .tox/ holds Windows launchers (.exe/.bat) that Linux tox
+        // cannot execute, and bind-mounting thousands of venv files is slow. A named volume
+        // shadows the host directory, so paths like .tox/htmlcov-py313 still resolve inside
+        // the container while the host copy is left alone.
+        "source=cyicbot-tox,target=${containerWorkspaceFolder}/.tox,type=volume",
+        // Persists wheel downloads across rebuilds; pandas/scipy/matplotlib are slow to refetch.
+        "source=cyicbot-pip-cache,target=/home/vscode/.cache/pip,type=volume"
+    ],
+
+    "containerEnv": {
+        // Mirrors tox.ini's setenv and pyproject's pytest pythonpath, so ad-hoc `python`
+        // and `pytest` invocations resolve the src/ layout the same way tox does.
+        "PYTHONPATH": "${containerWorkspaceFolder}/src",
+        // utilities.data_path() reads this to decide where charts and reports are written.
+        "WARREN_DATA_DIR": "${containerWorkspaceFolder}/data"
+    },
+
+    "remoteUser": "vscode",
+    "postCreateCommand": "bash .devcontainer/postCreate.sh ${containerWorkspaceFolder}",
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                // One extension per linter the project actually gates on in tox.ini.
+                "ms-python.flake8",
+                "ms-python.pylint",
+                "ms-python.mypy-type-checker",
+                "ms-python.black-formatter",
+                "tamasfe.even-better-toml",
+                "ms-azuretools.vscode-docker"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+                "python.testing.pytestEnabled": true,
+                "python.testing.unittestEnabled": false,
+                "python.testing.pytestArgs": [
+                    "src/tests"
+                ],
+                // black, flake8, pylint and mypy all read their config from pyproject.toml or
+                // tox.ini, so no args are duplicated here -- the repo stays the single source
+                // of truth for line length (120) and rule selection.
+                "[python]": {
+                    "editor.defaultFormatter": "ms-python.black-formatter",
+                    "editor.formatOnSave": true
+                },
+                "files.exclude": {
+                    "**/__pycache__": true,
+                    "**/*.egg-info": true
+                }
+            }
+        }
+    }
+}

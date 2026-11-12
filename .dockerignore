@@ -88,5 +88,8 @@ src/tests/
 
 # Images and assets (unless needed for runtime)
 images/
+# Dev container config (never needed in a production image)
+.devcontainer/
+
 # Deployment secrets
 secrets/
