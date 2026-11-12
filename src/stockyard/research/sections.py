@@ -8,6 +8,7 @@ import datetime
 import math
 from statistics import mean
 
+import numpy as np
 import pandas as pd
 
 from stockyard.data.fundamentals import AlignedFundamentals
@@ -19,10 +20,12 @@ from stockyard.research.models import (
     CashPositionResult,
     CashRow,
     EarningsGrowthResult,
+    LowEstimate,
     PastEpsResult,
     PastSalesResult,
     RecordOfStockResult,
     RevenueGrowthResult,
+    RiskRewardResult,
     TrendResult,
 )
 
@@ -381,3 +384,121 @@ def trend(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.da
         if not values
     )
     return TrendResult(**series, warnings=warnings)
+
+
+FORECAST_YEARS = 5
+MIN_TREND_QUARTERS = 5  # two trailing-twelve-month points
+
+
+def _linear_projection(series: pd.Series, horizon: pd.Timestamp):
+    """Fit value ~ time and return (projection at horizon, ((start, fit(start)), (horizon, projection)))."""
+    seconds = [stamp.timestamp() for stamp in series.index]
+    fit = np.polynomial.polynomial.Polynomial.fit(seconds, series.to_numpy(dtype=float), 1)
+    start = series.index[0]
+    projection = float(fit(horizon.timestamp()))
+    line = ((start.date().isoformat(), float(fit(start.timestamp()))), (horizon.date().isoformat(), projection))
+    return projection, line
+
+
+def _ttm_trend(data: StockData, as_of: datetime.date, horizon: pd.Timestamp, warnings: list):
+    earnings = _within(data.earnings, as_of)
+    reported = _column(earnings, "reported_eps").sort_index()
+    if len(reported) < MIN_TREND_QUARTERS:
+        warnings.append(
+            _unavailable("risk_reward", "projected_eps", MIN_TREND_QUARTERS, len(reported), "reported quarters")
+        )
+        return None, (), ()
+    ttm = reported.rolling(4).sum().dropna()
+    projected, line = _linear_projection(ttm, horizon)
+    points = tuple((stamp.date().isoformat(), float(value)) for stamp, value in ttm.items())
+    return projected, points, line
+
+
+def _low_estimates(data, rows, as_of, horizon, warnings):
+    prices = _within(data.daily_prices, as_of)
+    lows = _column(prices, "low")
+    line, monthly = (), ()
+    regression = None
+    if len(lows) >= 2:
+        regression, line = _linear_projection(lows, horizon)
+        by_month = lows.groupby(lows.index.to_period("M")).min()
+        monthly = tuple((str(month), float(value)) for month, value in by_month.items())
+    fiscal_lows = [row.low for row in rows if row.low is not None]
+    dividends = price_stats.ttm_dividends_per_share(data, as_of)
+    yields = [row.high_yield for row in rows if row.high_yield]
+    support = dividends / max(yields) if dividends and yields else None
+    if support is None:
+        warnings.append(
+            ReportWarning(
+                "figure_unavailable",
+                "dividend_support needs dividends and a fiscal-year high yield",
+                "risk_reward",
+                "dividend_support",
+            )
+        )
+    estimates = {
+        "linear_regression": regression,
+        "average_low": mean(fiscal_lows) if fiscal_lows else None,
+        "severe_low": float(lows.min()) if len(lows) else None,
+        "dividend_support": support,
+    }
+    return estimates, line, monthly
+
+
+def risk_reward(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> RiskRewardResult:
+    """Risk & Reward: forecast high (avg P/E-high x projected TTM EPS), four lows, zones and up/down ratios."""
+    section = "risk_reward"
+    warnings = []
+    horizon = pd.Timestamp(as_of) + pd.DateOffset(years=FORECAST_YEARS)
+    rows = price_stats.fiscal_year_price_stats(data, fundamentals, as_of)
+    price = price_stats.present_price(data, as_of)
+    average_pe_high = _mean_of(row.pe_high for row in rows)
+    projected, eps_points, eps_line = _ttm_trend(data, as_of, horizon, warnings)
+    forecast = None
+    if projected is not None and average_pe_high is not None and projected > 0:
+        forecast = average_pe_high * projected
+    else:
+        reason = (
+            "projected EPS is not positive"
+            if projected is not None and projected <= 0
+            else "needs projected EPS and a positive P/E history"
+        )
+        warnings.append(ReportWarning("figure_unavailable", f"forecast_high: {reason}", section, "forecast_high"))
+    estimates, low_line, monthly = _low_estimates(data, rows, as_of, horizon, warnings)
+    lows = []
+    for name, value in estimates.items():
+        zones = position = ratio = None
+        if forecast is not None and value is not None:
+            zones = definitions.zones(value, forecast)
+            if zones is None:
+                warnings.append(
+                    ReportWarning(
+                        "range_inverted", f"{name} {value:,.2f} is not below the forecast high", section, name
+                    )
+                )
+            elif price is not None:
+                position = zones.position(price)
+                ratio = definitions.up_down_ratio(forecast, price, value)
+        lows.append(LowEstimate(name, value, zones, position, ratio))
+    if forecast is not None and price is not None and price >= forecast:
+        warnings.append(
+            ReportWarning(
+                "price_above_range",
+                f"present price {price:,.2f} is at or above the forecast high {forecast:,.2f}",
+                section,
+                "up_down_ratio",
+            )
+        )
+    return RiskRewardResult(
+        present_price=price,
+        average_pe_high=average_pe_high,
+        projected_eps=projected,
+        forecast_high=forecast,
+        price_target_appreciation=definitions.appreciation(forecast, price) if forecast is not None else None,
+        lows=tuple(lows),
+        eps_points=eps_points,
+        eps_forecast_line=eps_line,
+        monthly_lows=monthly,
+        low_forecast_line=low_line,
+        warnings=tuple(warnings),
+    )

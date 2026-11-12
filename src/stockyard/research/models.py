@@ -100,3 +100,31 @@ class TrendResult:
     quarterly_eps: tuple  # ((announced, reported_eps), ...)
     monthly_prices: tuple  # ((month, high, low, avg_high_4m, avg_low_4m), ...)
     warnings: tuple
+
+
+@dataclass(frozen=True)
+class LowEstimate:
+    """One forecast low price with its zones, the present price's position and the up/down ratio."""
+
+    name: str  # linear_regression | average_low | severe_low | dividend_support
+    value: float | None
+    zones: object | None  # definitions.Zones
+    position: str | None
+    up_down_ratio: float | None
+
+
+@dataclass(frozen=True)
+class RiskRewardResult:  # pylint: disable=too-many-instance-attributes
+    """Five-year forecast high, four low estimates with zones, and chart series (design §5.7)."""
+
+    present_price: float | None
+    average_pe_high: float | None
+    projected_eps: float | None
+    forecast_high: float | None
+    price_target_appreciation: float | None
+    lows: tuple
+    eps_points: tuple  # ((announced, ttm_eps), ...)
+    eps_forecast_line: tuple  # ((date, value), (horizon, projected)) or ()
+    monthly_lows: tuple  # ((month, low), ...)
+    low_forecast_line: tuple
+    warnings: tuple
