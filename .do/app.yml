@@ -1,8 +1,8 @@
-name: warren_bot
+name: stockyard
 services:
 - environment_slug: python
   github:
     branch: main
     deploy_on_push: true
-    repo: CyIC/warren
-  name: warren_bot
+    repo: CyIC/stockyard
+  name: stockyard

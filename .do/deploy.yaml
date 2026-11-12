@@ -1,8 +1,8 @@
 spec:
-  name: warren_bot
+  name: stockyard
   services:
   - environment_slug: python
     git:
       branch: main
-      repo_clone_url: https://github.com/CyIC/warren.git
-    name: warren_bot
+      repo_clone_url: https://github.com/CyIC/stockyard.git
+    name: stockyard

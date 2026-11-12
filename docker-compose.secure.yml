@@ -1,5 +1,5 @@
 services:
-  warren-bot:
+  warren:
     build:
       context: .
       dockerfile: Dockerfile
@@ -8,8 +8,8 @@ services:
         BUILD_DATE: ${BUILD_DATE:-}
         VCS_REF: ${VCS_REF:-}
     
-    container_name: warren-bot-secure
-    hostname: warren-bot
+    container_name: warren-secure
+    hostname: warren
     
     # Security: Restart policy
     restart: unless-stopped
@@ -80,7 +80,7 @@ services:
     
     # Security: Network configuration
     networks:
-      - warren-bot-internal
+      - stockyard-internal
     
     # Security: No host networking
     network_mode: bridge
@@ -107,7 +107,7 @@ services:
     # Security: Labels for monitoring and management
     labels:
       - "traefik.enable=false"  # Disable if using Traefik
-      - "com.docker.compose.service=warren-bot"
+      - "com.docker.compose.service=warren"
       - "security.policy=restricted"
       - "backup.enable=true"
       - "backup.path=/app/data"
@@ -119,7 +119,7 @@ secrets:
 
 # Security: Custom network with restricted access
 networks:
-  warren-bot-internal:
+  stockyard-internal:
     driver: bridge
     internal: false  # Set to true if no external network access needed
     ipam:

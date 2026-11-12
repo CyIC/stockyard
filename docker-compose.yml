@@ -1,7 +1,7 @@
 services:
-  warren-bot:
+  warren:
     build: .
-    container_name: warren-bot
+    container_name: warren
     restart: unless-stopped
     user: "1000:1000"
     
@@ -38,4 +38,4 @@ services:
 # Networks (optional)
 networks:
   default:
-    name: warren-bot-network
+    name: stockyard-network

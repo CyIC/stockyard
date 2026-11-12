@@ -21,7 +21,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-    <a href="https://github.com/CyIC/warren_bot">
+    <a href="https://github.com/CyIC/stockyard">
         <img src="images/logo.png" alt="Logo" width="80" height="80">
     </a>
 
@@ -35,9 +35,9 @@
     <br />
     <a href="https://github.com/github_username/repo_name">View Demo</a>
     ·
-    <a href="https://github.com/CyIC/warren_bot/issues">Report Bug</a>
+    <a href="https://github.com/CyIC/stockyard/issues">Report Bug</a>
     ·
-    <a href="https://github.com/CyIC/warren_bot/issues">Request Feature</a>
+    <a href="https://github.com/CyIC/stockyard/issues">Request Feature</a>
   </p>
 </div>
 
@@ -222,22 +222,22 @@ This project uses libraries and software listed in the [Built With](README.md#bu
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/CyIC/warren_bot.svg?style=for-the-badge
-[contributors-url]: https://github.com/CyIC/warren_bot/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/CyIC/warren_bot.svg?style=for-the-badge
-[forks-url]: https://github.com/CyIC/warren_bot/network/members
-[stars-shield]: https://img.shields.io/github/stars/CyIC/warren_bot.svg?style=for-the-badge
-[stars-url]: https://github.com/CyIC/warren_bot/stargazers
-[issues-shield]: https://img.shields.io/github/issues/CyIC/warren_bot.svg?style=for-the-badge
-[issues-url]: https://github.com/CyIC/warren_bot/issues
-[license-shield]: https://img.shields.io/github/license/CyIC/warren_bot.svg?style=for-the-badge
-[license-url]: https://github.com/CyIC/warren_bot/blob/master/LICENSE.md
+[contributors-shield]: https://img.shields.io/github/contributors/CyIC/stockyard.svg?style=for-the-badge
+[contributors-url]: https://github.com/CyIC/stockyard/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/CyIC/stockyard.svg?style=for-the-badge
+[forks-url]: https://github.com/CyIC/stockyard/network/members
+[stars-shield]: https://img.shields.io/github/stars/CyIC/stockyard.svg?style=for-the-badge
+[stars-url]: https://github.com/CyIC/stockyard/stargazers
+[issues-shield]: https://img.shields.io/github/issues/CyIC/stockyard.svg?style=for-the-badge
+[issues-url]: https://github.com/CyIC/stockyard/issues
+[license-shield]: https://img.shields.io/github/license/CyIC/stockyard.svg?style=for-the-badge
+[license-url]: https://github.com/CyIC/stockyard/blob/master/LICENSE.md
 [product-screenshot]: images/screenshot.png
 [lint-flake8-shield]: https://img.shields.io/badge/linting-flake8-yellowgreen?style=for-the-badge
 [flake8-url]: https://flake8.pycqa.org/en/latest/
 [discordpy-url]: https://discordpy.readthedocs.io/en/stable/
-[python-shield]: https://img.shields.io/python/required-version-toml?style=for-the-badge&tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FCyIC%2Fwarren_bot%2Fblob%2Fmain%2Fpyproject.toml
+[python-shield]: https://img.shields.io/python/required-version-toml?style=for-the-badge&tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FCyIC%2Fstockyard%2Fblob%2Fmain%2Fpyproject.toml
 [python-url]: https://www.python.org/
 [poetry-url]: https://python-poetry.org
-[oss-shield]: https://img.shields.io/osslifecycle/CyIC/warren_bot?style=for-the-badge
+[oss-shield]: https://img.shields.io/osslifecycle/CyIC/stockyard?style=for-the-badge
 [oss-url]: https://github.com/Netflix/osstracker/tree/master

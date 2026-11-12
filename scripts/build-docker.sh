@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Warren Bot Docker Build Script
-# This script builds the Warren Bot Docker image with proper tags
+# Stockyard Docker Build Script
+# This script builds the Stockyard Docker image with proper tags
 
 set -e
 
 # Configuration
-IMAGE_NAME="warren-bot"
+IMAGE_NAME="stockyard"
 VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
 REGISTRY=${DOCKER_REGISTRY:-""}
 
@@ -16,7 +16,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Building Warren Bot Docker Image${NC}"
+echo -e "${GREEN}Building Stockyard Docker Image${NC}"
 echo "Version: $VERSION"
 echo "Image: $IMAGE_NAME"
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ======================================================================================
-# SECURE DOCKER BUILD SCRIPT FOR WARREN BOT
+# SECURE DOCKER BUILD SCRIPT FOR STOCKYARD
 # ======================================================================================
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
@@ -9,7 +9,7 @@ set -euo pipefail  # Exit on error, undefined vars, pipe failures
 # Configuration
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-readonly IMAGE_NAME="warren-bot"
+readonly IMAGE_NAME="stockyard"
 readonly BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 readonly VCS_REF=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 readonly VERSION=$(grep '^version = ' "$PROJECT_DIR/pyproject.toml" | sed 's/version = "\(.*\)"/\1/')
@@ -85,7 +85,7 @@ security_scan() {
 
 # Build the secure Docker image
 build_image() {
-    echo -e "${BLUE}🏗️  Building secure Warren Bot image...${NC}"
+    echo -e "${BLUE}🏗️  Building secure Stockyard image...${NC}"
     echo "Image: $IMAGE_NAME:$VERSION"
     echo "Build Date: $BUILD_DATE"
     echo "VCS Ref: $VCS_REF"
@@ -189,11 +189,11 @@ image_security_scan() {
 
 # Generate security report
 generate_security_report() {
-    local report_file="/tmp/warren-bot-security-report.txt"
+    local report_file="/tmp/stockyard-security-report.txt"
     echo -e "${BLUE}📄 Generating security report...${NC}"
     
     {
-        echo "Warren Bot Security Build Report"
+        echo "Stockyard Security Build Report"
         echo "=================================="
         echo "Build Date: $BUILD_DATE"
         echo "Version: $VERSION"
@@ -220,7 +220,7 @@ WorkingDir: {{.Config.WorkingDir}}
 
 # Main execution
 main() {
-    echo -e "${GREEN}🚀 Starting secure Warren Bot build process${NC}"
+    echo -e "${GREEN}🚀 Starting secure Stockyard build process${NC}"
     echo "========================================================"
     
     check_prerequisites

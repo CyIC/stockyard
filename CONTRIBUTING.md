@@ -78,7 +78,7 @@ This project is built to be ran without a complex building process, and is simpl
 the following command.
 
 ```commandline
-python src/warrenBot/dchat.py
+poetry run warren          # the Discord bot (or: python -m stockyard.bot)
 ```
 
 ## Running the tests

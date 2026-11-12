@@ -1,6 +1,6 @@
 # Terms of Use
 
-Please read these terms of use ("terms of use", "agreement") carefully before using WarrenBot ("chatbot", "applicaiton", 
+Please read these terms of use ("terms of use", "agreement") carefully before using Warren, the Cypress Investment Club's stock research bot ("chatbot", "applicaiton", 
 "service") operated by Cypress Investment Club ("CyIC", "us", "we", "our").
 
 ## Conditions of use

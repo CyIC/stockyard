@@ -1,4 +1,4 @@
-# CI/CD pipeline for Warren Bot (Python / tox).
+# CI/CD pipeline for Stockyard (Python / tox).
 # Runs the tox environments directly so CI matches local dev exactly: tox installs
 # each tool group from pyproject's [dependency-groups] and runs the same commands
 # configured in tox.ini. This avoids drift between CI and `tox -e ...` locally.

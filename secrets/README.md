@@ -1,4 +1,4 @@
-# Secrets Management for Warren Bot
+# Secrets Management for Stockyard
 
 This directory contains sensitive configuration files that should **NEVER** be committed to version control.
 

@@ -1,5 +1,5 @@
 # ======================================================================================
-# SECURE MULTI-STAGE DOCKERFILE FOR WARREN BOT
+# SECURE MULTI-STAGE DOCKERFILE FOR STOCKYARD (runs Warren, the Discord bot)
 #
 # Base: Chainguard distroless Python (minimal CVEs, non-root by default, no shell in
 # the runtime layer). All shell/pip work happens in the `-dev` build stages; the final
@@ -64,7 +64,7 @@ RUN python -m venv --copies .venv
 COPY --from=builder /build/dist/*.whl ./
 RUN pip install --no-cache-dir ./*.whl \
     && rm ./*.whl \
-    && python -c "import stockyard; print('Warren Bot installed successfully')"
+    && python -c "import stockyard; print('stockyard installed successfully')"
 
 # ------------------------------------------------------------------------------------------
 # RUNTIME STAGE — distroless, non-root, no shell. Only COPY + metadata here.
@@ -76,7 +76,7 @@ ARG BUILD_DATE
 ARG VCS_REF
 
 LABEL maintainer="J.A. Simmons V <simmonsj@jasimmonsv.com>" \
-      org.opencontainers.image.title="Warren Bot" \
+      org.opencontainers.image.title="Stockyard" \
       org.opencontainers.image.description="Secure Discord Investment Club Chatbot" \
       org.opencontainers.image.version="${WARREN_VERSION}" \
       org.opencontainers.image.created="${BUILD_DATE}" \

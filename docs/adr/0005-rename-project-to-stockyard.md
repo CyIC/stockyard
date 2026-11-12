@@ -27,3 +27,10 @@ talk to, not the codebase.
 ## Consequences
 
 - Breaking import path change, done as one mechanical commit (`f3c00cb`) before redesign work.
+
+## Amendment (2026-11-12)
+
+At the owner's request, once the GitHub and GitLab repositories were renamed `stockyard`, the remaining
+`warren-bot` names were retired: the Docker image is `stockyard`, the Compose service and container that run
+the bot are `warren` (matching the `warren` console script), and networks, build scripts and DigitalOcean app
+names use `stockyard`. References to "Warren Bot 0.1" as the name of the previous release are kept.

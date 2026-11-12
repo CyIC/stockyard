@@ -90,113 +90,61 @@ these. Never decide on your own that "this case is different."
 
 ## Project Overview
 
-Warren Bot is a Discord investment club chatbot that analyzes stocks, tracks portfolio performance, and provides
-financial reports. The bot integrates with yfinance for market data and generates comprehensive stock analysis reports
-including Graham valuation calculations.
+Stockyard is the Cypress Investment Club's stock research library. It produces the BetterInvesting Stock Selection
+Guide (SSG) analysis for a ticker as structured results, and delivers them through front ends: **Warren**, the
+Discord bot, and (v1.0, in progress) the `stockyard` CLI for humans and AI agents; an MCP server follows in v1.1.
+Warren is the persona; the code is named for Stockyard (ADR-0005).
+
+Read before changing behaviour: `docs/design/v1.md` (design and decision log), `docs/design/v1-plan.md` (phased
+plan), `docs/adr/` (decisions), `CONTEXT.md` (glossary; its terms win).
 
 ## Architecture
 
 ### Core Structure
 
-- **src/warren_bot/** - Main application module
-    - `__main__.py` - Discord bot entry point and command handling
-    - `stock_analysis.py` - Stock analysis and Graham valuation calculations
-    - `portfolio_analysis.py` - Club portfolio tracking and reporting
-    - `yfinance_integration.py` - Yahoo Finance API integration via yfinance
-    - `analysis.py` - Quantitative analysis methods
-    - `utilities.py` - General utility functions
-    - `logging_config.py` - Centralized logging configuration
+- **src/stockyard/data/** - `snapshot.py` (fetch everything once into `StockData`), `cache.py` (same-day cache,
+  record on miss / replay on hit), `fundamentals.py` (fiscal-year alignment, ADR-0001), `tickers.py` (validation,
+  the trust boundary), `errors.py`, `yfinance_source.py` (yfinance labels -> stockyard column names)
+- **src/stockyard/research/** - `definitions.py` (SSG formulas, design §5.7), `price_stats.py` (shared per-year
+  price figures), `sections.py` (one pure function per section), `report.py` (`build_report`), `models.py`
+- **src/stockyard/render/** - `text.py`, `discord.py` (2000-character messages), `json.py`
+  (`stockyard.report/1`), `charts.py` (matplotlib OO `Figure` API only, thread-safe)
+- **src/stockyard/bot/** - Warren: command parsing, `!sr` built off the event loop
+- `clock.py` (the only wall-clock read), `config.py`, `logging_config.py` (stderr), `report_warning.py`,
+  `utilities.py`
 
-### Key Components
+### Rules
 
-- **Discord Integration**: Uses discord.py library with async command handling
-- **Financial Data**: yfinance for stock quotes, fundamentals, and historical data
-- **Analysis Engine**: Pandas/NumPy for data processing, matplotlib for charting
-- **Report Generation**: HTML templates with Jinja2, PDF generation with xhtml2pdf
-
-### Configuration Files
-
-- `.env` - Discord token (use template)
-- `club_info.json` - Investment club metadata and settings
-- `club_stocks.csv` - Portfolio holdings and transactions
+- Dependencies point down only: `data` and `research` never import `discord`, `matplotlib` or `prettytable`
+  (`src/tests/test_architecture.py` enforces it).
+- Sections are pure `section(data, fundamentals, as_of)`; they never read the clock or another section's result.
+- Missing figures are `None` with a `ReportWarning`, never a crash or a fake number.
+- Tests never touch the network: use `tests/builders.py` for small exact data and `tests/fixture_replay.py`
+  (recorded IBM, MSFT, RDDT in `src/tests/fixtures/`) with `as_of` pinned to the capture date.
 
 ## Development Commands
 
-### Setup and Installation
-
 ```bash
-# Install dependencies
-poetry install
-
-# Activate virtual environment  
-poetry shell
-```
-
-### Testing
-
-```bash
-# Run all tests with coverage
-tox
-
-# Run specific Python version tests
-tox -e py313
-
-# Run linting only
-tox -e flake8
-
-# Run pylint only  
-tox -e pylint
-
-# Single test run with pytest
-poetry run pytest src/tests/ --cov=src/warren_bot
-```
-
-### Code Quality
-
-```bash
-# Format code with Black
+poetry install                                        # dependencies
+tox                                                   # tests, lint and type checks
+poetry run pytest src/tests/ --cov=src/stockyard      # tests with coverage
 poetry run black src/
-
-# Run flake8 linting
-poetry run flake8 --ignore=E501,D401 src/warren_bot
-
-# Run pylint
-poetry run pylint src
-```
-
-### Running the Bot
-
-```bash
-# Run the Discord bot
-poetry run warren_bot
-
-# Or directly with Python
-python src/warren_bot/__main__.py
-```
-
-### Version Management
-
-```bash
-# Bump version (configured with bump-my-version)
-bump-my-version patch|minor|major
+poetry run flake8 src/stockyard
+poetry run pylint src/stockyard
+poetry run python scripts/record_raw_fixtures.py IBM  # re-record fixtures (needs Yahoo Finance access)
+poetry run warren                                     # run the Discord bot (or: python -m stockyard.bot)
+bump-my-version patch|minor|major                     # version management
 ```
 
 ## Bot Commands
 
-The Discord bot responds to these commands:
+- `!stock_report <ticker>` or `!sr <ticker>` - Stock Selection Guide report with charts
+- `!help` - available commands
 
-- `!stock_report <ticker>` or `!sr <ticker>` - Generate comprehensive stock analysis
-- `!graham_value <ticker>` - Calculate Graham revised valuation formula
-- `!club_report` or `!cr` - Generate club portfolio performance report
-- `!terms_of_use` - Display terms of use
-- `!help` - Show available commands
+## Configuration
 
-## Configuration Requirements
-
-1. **Discord Bot Token**: Create bot at https://discord.com/developers/applications
-2. **Club Data**: Configure `club_info.json` and `club_stocks.csv` for portfolio tracking
-
-Note: market data comes from Yahoo Finance via yfinance, which does not require an API key.
+Environment variables (`STOCKYARD_DATA_DIR`, `LOGGING_LEVEL`, `DISCORD_TOKEN` / `DISCORD_TOKEN_FILE`) are
+documented in the README and `.env.template`. Market data comes from Yahoo Finance via yfinance (no API key).
 
 ## Code Style Guidelines
 
@@ -208,9 +156,8 @@ Note: market data comes from Yahoo Finance via yfinance, which does not require 
 
 ## Key Dependencies
 
-- **discord.py**: Discord bot framework
-- **pandas/numpy**: Data analysis and manipulation
-- **matplotlib/mplfinance**: Chart generation
-- **yfinance**: Financial data retrieval from Yahoo Finance
-- **prettytable**: ASCII table formatting
-- **jinja2**: HT
+- **yfinance**: market data from Yahoo Finance
+- **pandas/numpy**: data processing
+- **matplotlib**: charts (object-oriented `Figure` API, never `pyplot`)
+- **discord.py**: the Warren bot
+- **python-json-logger**, **tzdata**

@@ -1,6 +1,6 @@
-# Docker Deployment Guide for Warren Bot
+# Docker Deployment Guide for Stockyard
 
-This guide covers how to build and run Warren Bot using Docker.
+This guide covers how to build and run Stockyard's Discord bot, Warren, using Docker.
 
 ## Prerequisites
 
@@ -12,8 +12,8 @@ This guide covers how to build and run Warren Bot using Docker.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/CyIC/warren_bot.git
-   cd warren_bot
+   git clone https://github.com/CyIC/stockyard.git
+   cd stockyard
    ```
 
 2. **Set up environment variables**
@@ -36,7 +36,7 @@ This guide covers how to build and run Warren Bot using Docker.
 
 5. **Check logs**
    ```bash
-   docker-compose logs -f warren-bot
+   docker-compose logs -f warren
    ```
 
 ## Manual Docker Build and Run
@@ -45,7 +45,7 @@ This guide covers how to build and run Warren Bot using Docker.
 
 ```bash
 # Build the Docker image
-docker build -t warren-bot:latest .
+docker build -t stockyard:latest .
 ```
 
 ### Run the Container
@@ -53,7 +53,7 @@ docker build -t warren-bot:latest .
 ```bash
 # Run the container with environment variables
 docker run -d \
-  --name warren-bot \
+  --name warren \
   --restart unless-stopped \
   -e DISCORD_TOKEN="your_discord_bot_token_here" \
   -e LOGGING_LEVEL="INFO" \
@@ -61,7 +61,7 @@ docker run -d \
   -v $(pwd)/club_stocks.csv:/app/club_stocks.csv:ro \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/logs:/app/logs \
-  warren-bot:latest
+  stockyard:latest
 ```
 
 ## Configuration
@@ -93,10 +93,10 @@ docker run -d \
 
 ```bash
 # Docker Compose
-docker-compose logs -f warren-bot
+docker-compose logs -f warren
 
 # Docker
-docker logs -f warren-bot
+docker logs -f warren
 ```
 
 ### Stop the Bot
@@ -106,8 +106,8 @@ docker logs -f warren-bot
 docker-compose down
 
 # Docker
-docker stop warren-bot
-docker rm warren-bot
+docker stop warren
+docker rm warren
 ```
 
 ### Update the Bot
@@ -120,9 +120,9 @@ docker-compose build  # if building locally
 docker-compose up -d
 
 # Docker
-docker stop warren-bot
-docker rm warren-bot
-docker build -t warren-bot:latest .
+docker stop warren
+docker rm warren
+docker build -t stockyard:latest .
 # Run command again
 ```
 
@@ -130,10 +130,10 @@ docker build -t warren-bot:latest .
 
 ```bash
 # Docker Compose
-docker-compose exec warren-bot /bin/bash
+docker-compose exec warren /bin/bash
 
 # Docker
-docker exec -it warren-bot /bin/bash
+docker exec -it warren /bin/bash
 ```
 
 ## Security Considerations
@@ -158,7 +158,7 @@ docker exec -it warren-bot /bin/bash
 
 3. **Memory issues**
     - Adjust resource limits in docker-compose.yml
-    - Monitor container memory usage: `docker stats warren-bot`
+    - Monitor container memory usage: `docker stats warren`
 
 ### Debug Mode
 
@@ -188,7 +188,7 @@ For production deployment, consider:
 ```yaml
 version: '3.8'
 services:
-  warren-bot:
+  warren:
     build: .
     restart: unless-stopped
     environment:
@@ -215,7 +215,7 @@ The Dockerfile supports multiple architectures. To build for different platforms
 
 ```bash
 # Build for multiple architectures
-docker buildx build --platform linux/amd64,linux/arm64 -t warren-bot:latest .
+docker buildx build --platform linux/amd64,linux/arm64 -t stockyard:latest .
 
 # Build for Raspberry Pi
-docker buildx build --platform linux/arm/v7 -t warren-bot:arm -.
+docker buildx build --platform linux/arm/v7 -t stockyard:arm -.
