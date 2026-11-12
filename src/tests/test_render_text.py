@@ -2,7 +2,7 @@
 """Terminal/text rendering of section results (design §6)."""
 from stockyard.render import text
 from stockyard.report_warning import ReportWarning
-from stockyard.research.models import PastEpsResult, PastSalesResult
+from stockyard.research.models import EarningsGrowthResult, PastEpsResult, PastSalesResult
 
 
 def _past_sales(**overrides):
@@ -69,3 +69,16 @@ def test_past_eps_shows_eps_per_share_with_cents():
     assert "FY2025" in rendered.body and "$11.57" in rendered.body
     assert "% increase in earnings" in rendered.body
     assert "Compound annual growth (FY2024→FY2025)" in rendered.body and "12.00%" in rendered.body
+
+
+def test_earnings_growth_table():
+    result = EarningsGrowthResult(
+        years=(("FY2024", -50_000_000.0, None, None), ("FY2025", 200_000_000.0, 250_000_000.0, 5.0)), warnings=()
+    )
+    rendered = text.earnings_growth(result)
+
+    assert rendered.title == "Earnings Growth"
+    lines = rendered.body.splitlines()
+    assert lines[0].split() == ["Fiscal", "year", "Net", "income", "Change", "%", "change"]
+    assert "FY2024" in lines[1] and "-$50,000,000" in lines[1] and "n/a" in lines[1]
+    assert "FY2025" in lines[2] and "$250,000,000" in lines[2] and "500.00%" in lines[2]

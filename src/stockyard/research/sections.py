@@ -11,7 +11,7 @@ from stockyard.data.fundamentals import AlignedFundamentals
 from stockyard.data.snapshot import StockData
 from stockyard.report_warning import ReportWarning
 from stockyard.research import definitions
-from stockyard.research.models import PastEpsResult, PastSalesResult
+from stockyard.research.models import EarningsGrowthResult, PastEpsResult, PastSalesResult
 
 
 def _unavailable(section: str, figure: str, needed: int, available: int, unit: str) -> ReportWarning:
@@ -70,3 +70,19 @@ def past_eps(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime
     del data, as_of
     years = tuple((year.fiscal_year, year.reported_eps) for year in fundamentals.years if year.complete)
     return PastEpsResult(**_growth("past_eps", years, "complete fiscal years", "non_positive_eps"))
+
+
+def earnings_growth(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> EarningsGrowthResult:
+    """Earnings Growth: net income per fiscal year; % change divides by the absolute prior value."""
+    del data, as_of
+    incomes = [(year.fiscal_year, year.net_income) for year in fundamentals.years if year.net_income is not None]
+    rows = []
+    for index, (fiscal_year, income) in enumerate(incomes):
+        if index == 0:
+            rows.append((fiscal_year, income, None, None))
+            continue
+        prior = incomes[index - 1][1]
+        change = income - prior
+        rows.append((fiscal_year, income, change, change / abs(prior) if prior else None))
+    warnings = () if len(rows) >= 2 else (_unavailable("earnings_growth", "change", 2, len(rows), "fiscal years"),)
+    return EarningsGrowthResult(years=tuple(rows), warnings=warnings)

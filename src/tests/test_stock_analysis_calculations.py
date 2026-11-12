@@ -176,44 +176,6 @@ def test_zone_analysis_survives_price_equal_to_projected_low():
 
 
 # --------------------------------------------------------------------------------------
-# earnings_growth
-# --------------------------------------------------------------------------------------
-def _cash_flow_fixture(net_income):
-    """Build the {'annualReports': DataFrame} contract earnings_growth consumes."""
-    return {"annualReports": pd.DataFrame({"netIncome": net_income}, index=_annual_index(len(net_income)))}
-
-
-def test_earnings_growth_computes_year_over_year_change():
-    cash_flow = _cash_flow_fixture([100.0, 150.0, -50.0, 200.0])
-    years = [stamp.year for stamp in cash_flow["annualReports"].index]
-
-    msg = stock_analysis.earnings_growth(cash_flow)
-
-    first = _row(msg, str(years[0]))
-    assert _money(first[1]) == pytest.approx(100.0)
-
-    second = _row(msg, str(years[1]))
-    assert _money(second[2]) == pytest.approx(50.0)
-    assert _pct(second[3]) == pytest.approx(0.5)
-
-    third = _row(msg, str(years[2]))
-    assert _money(third[2]) == pytest.approx(-200.0)
-    assert _pct(third[3]) == pytest.approx(-200.0 / 150.0, rel=1e-3)
-
-
-def test_earnings_growth_reports_positive_swing_out_of_a_loss():
-    """abs() in the denominator is deliberate: a loss turning into a profit is growth."""
-    cash_flow = _cash_flow_fixture([100.0, -50.0, 200.0])
-    years = [stamp.year for stamp in cash_flow["annualReports"].index]
-
-    msg = stock_analysis.earnings_growth(cash_flow)
-
-    recovery = _row(msg, str(years[2]))
-    assert _money(recovery[2]) == pytest.approx(250.0)
-    assert _pct(recovery[3]) == pytest.approx(5.0)
-
-
-# --------------------------------------------------------------------------------------
 # _ttm_eps
 # --------------------------------------------------------------------------------------
 def _quarterly_eps_fixture(values):
@@ -309,7 +271,6 @@ def _run_with_mocked_sections(earnings, **section_mocks):
         "trend": MagicMock(return_value=("trend", [])),
         "cash_position": MagicMock(),
         "revenue_growth": MagicMock(),
-        "earnings_growth": MagicMock(),
         "risk_reward": MagicMock(return_value=("risk_reward", [])),
     }
     defaults.update(section_mocks)

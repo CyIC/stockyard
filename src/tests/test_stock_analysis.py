@@ -186,8 +186,7 @@ class StockAnalysisTestCase(unittest.TestCase):
             stock_analysis, "cash_position", MagicMock()
         ), patch.object(
             stock_analysis, "revenue_growth", MagicMock()
-        ), patch.object(
-            stock_analysis, "earnings_growth", MagicMock()
+
         ), patch.object(
             stock_analysis, "risk_reward", autospec=True
         ) as risk_reward_mock:

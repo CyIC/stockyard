@@ -23,3 +23,11 @@ class PastSalesResult(GrowthRecord):
 @dataclass(frozen=True)
 class PastEpsResult(GrowthRecord):
     """Reported EPS per Complete Fiscal Year."""
+
+
+@dataclass(frozen=True)
+class EarningsGrowthResult:
+    """Net income per fiscal year with its change from the prior year."""
+
+    years: tuple  # ((fiscal_year, net_income, change, pct_change), ...); change/pct None for the first year
+    warnings: tuple

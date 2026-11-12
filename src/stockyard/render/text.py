@@ -2,7 +2,7 @@
 """Plain-text rendering of section results, shared by the CLI and (wrapped) Discord (design §6)."""
 from dataclasses import dataclass
 
-from stockyard.research.models import PastEpsResult, PastSalesResult
+from stockyard.research.models import EarningsGrowthResult, PastEpsResult, PastSalesResult
 
 NA = "n/a"
 
@@ -16,7 +16,9 @@ class RenderedSection:
 
 
 def _money(value: float | None) -> str:
-    return NA if value is None else f"${value:,.0f}"
+    if value is None:
+        return NA
+    return f"-${-value:,.0f}" if value < 0 else f"${value:,.0f}"
 
 
 def _pct(value: float | None) -> str:
@@ -65,3 +67,21 @@ def past_sales(result: PastSalesResult) -> RenderedSection:
 def past_eps(result: PastEpsResult) -> RenderedSection:
     """Past EPS: reported EPS per share by Complete Fiscal Year and its growth."""
     return _growth("Past EPS", result, _per_share, "% increase in earnings")
+
+
+def _table(header: list[str], rows: list[list[str]]) -> list[str]:
+    """Left-aligned first column, right-aligned figures."""
+    widths = [max(len(row[i]) for row in [header, *rows]) for i in range(len(header))]
+    return [
+        "  ".join(cell.ljust(widths[0]) if i == 0 else cell.rjust(widths[i]) for i, cell in enumerate(row))
+        for row in [header, *rows]
+    ]
+
+
+def earnings_growth(result: EarningsGrowthResult) -> RenderedSection:
+    """Earnings Growth: net income by fiscal year with change and % change."""
+    rows = [
+        [fiscal_year, _money(income), _money(change), _pct(pct)] for fiscal_year, income, change, pct in result.years
+    ]
+    lines = _table(["Fiscal year", "Net income", "Change", "% change"], rows) + _warnings(result.warnings)
+    return RenderedSection("Earnings Growth", "\n".join(lines))

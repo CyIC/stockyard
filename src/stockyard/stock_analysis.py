@@ -596,41 +596,6 @@ def revenue_growth(
     return msg
 
 
-def earnings_growth(cash_flow: pd.DataFrame):
-    """Build Earnings growth section of stock analysis.
-
-    :param cash_flow: <dict> json of cash flow
-    :return: <str> a message of the analysis to print
-    """
-    msg = "__**Earnings Growth**__"
-    earnings_table = PrettyTable(["Year", "Net Income", "Change", "% Change"], float_format=".4")
-    earnings_table.align = "r"
-    earning_growth = cash_flow["annualReports"]
-    earning_growth = pd.DataFrame(earning_growth["netIncome"])
-    # earnings_growth['Change'] = earnings_growth.diff()
-    # earnings_growth['% Change'] = earnings_growth['Change'].div(earnings_growth['netIncome'])
-    last_year = None
-    date = earning_growth.index
-    change = 0
-    percent_change = 0
-    for count, year in enumerate(earning_growth["netIncome"]):
-        if last_year is not None:
-            change = year - last_year
-            percent_change = change / abs(last_year)
-        earnings_table.add_row(
-            [
-                f"{date[count].year}",
-                f"${year:20,.0f}",
-                f"${change:20,.0f}",
-                f"{percent_change:.3%}",
-            ]
-        )
-        last_year = year
-        # date.append(year[0])
-    msg += f"```{earnings_table}```"
-    return msg
-
-
 def predict_low(high: float, low: float, current_price: float):
     """Build out the table for buy/maybe/sell options.
 
@@ -946,7 +911,7 @@ async def run(message, ticker):
             balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[-1],
         )
     )
-    await message.channel.send(earnings_growth(cash_flow))
+    await message.channel.send(_discord(text.earnings_growth(sections.earnings_growth(data, fundamentals, as_of))))
     # TODO management
     # Risk Reward
     msg, charts = risk_reward(
