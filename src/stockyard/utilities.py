@@ -5,7 +5,6 @@
 Includes getting data from alphavantage and processing data structures.
 """
 import configparser
-import logging
 import os
 
 from stockyard.config import Settings
@@ -49,29 +48,3 @@ def load_discord_token() -> str:
     parser = configparser.ConfigParser()
     parser.read("bot_config.ini")
     return parser["discord"]["token"]
-
-
-MAX_MESSAGE_LENGTH = 2000  # Maximum message length allowed by Discord
-logger = logging.getLogger("discord")
-logger.setLevel(logging.DEBUG)
-
-
-async def send_message_in_chunks(channel, content):
-    """Split a long message into Discord allowed chunks.
-
-    :param channel: Discord message channel
-    :param content: Message to break into chunks
-    :return:
-    """
-    # split the message into chunks
-    if isinstance(content, list):
-        for msg in content:
-            chunks = [msg[i : i + MAX_MESSAGE_LENGTH] for i in range(0, len(msg), MAX_MESSAGE_LENGTH)]  # noqa: E203
-
-            for chunk in chunks:
-                await channel.send(chunk)  # send each chunk to the channel
-    else:
-        chunks = [content[i : i + MAX_MESSAGE_LENGTH] for i in range(0, len(content), MAX_MESSAGE_LENGTH)]  # noqa: E203
-
-        for chunk in chunks:
-            await channel.send(chunk)  # send each chunk to the channel

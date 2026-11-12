@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Unit testing module for the utilities module."""
-import asyncio
 import os
 import shutil
 import tempfile
@@ -9,34 +8,6 @@ import unittest
 from unittest import mock
 
 from stockyard import utilities as util
-
-
-class SendMessageInChunksTestCase(unittest.TestCase):
-    """Unittest send_message_in_chunks."""
-
-    def test_single_string_split_into_chunks(self):
-        # Given - content longer than one Discord message
-        channel = mock.AsyncMock()
-        content = "a" * (util.MAX_MESSAGE_LENGTH + 10)
-
-        # When
-        asyncio.run(util.send_message_in_chunks(channel, content))
-
-        # Then - two chunks sent
-        self.assertEqual(channel.send.await_count, 2)
-        first_chunk = channel.send.await_args_list[0].args[0]
-        self.assertEqual(len(first_chunk), util.MAX_MESSAGE_LENGTH)
-
-    def test_list_of_messages_each_sent(self):
-        # Given - a list of short messages
-        channel = mock.AsyncMock()
-        content = ["one", "two", "three"]
-
-        # When
-        asyncio.run(util.send_message_in_chunks(channel, content))
-
-        # Then - one send per list item
-        self.assertEqual(channel.send.await_count, 3)
 
 
 class DataPathTestCase(unittest.TestCase):
