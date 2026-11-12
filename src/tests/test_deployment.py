@@ -34,3 +34,16 @@ def test_digitalocean_runs_warren_as_a_worker_from_the_dockerfile(name):
     assert "dockerfile_path: Dockerfile" in spec and (ROOT / "Dockerfile").exists()
     assert re.search(r"key: DISCORD_TOKEN\n\s+scope: RUN_TIME\n\s+type: SECRET", spec)
     assert re.search(r"key: STOCKYARD_DATA_DIR\n\s+scope: RUN_TIME\n\s+value: /tmp/", spec)  # no volumes there
+
+
+def test_secret_files_are_ignored_by_git_and_docker():
+    if not (ROOT / ".git").exists():
+        pytest.skip("not a git checkout")
+    ignored = subprocess.run(
+        ["git", "check-ignore", "-q", "secrets/discord_token.txt"], cwd=ROOT, capture_output=True, check=False
+    )
+    tracked = subprocess.run(
+        ["git", "check-ignore", "-q", "secrets/README.md"], cwd=ROOT, capture_output=True, check=False
+    )
+    assert ignored.returncode == 0 and tracked.returncode == 1
+    assert "secrets/" in (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()

@@ -88,3 +88,5 @@ src/tests/
 
 # Images and assets (unless needed for runtime)
 images/
+# Deployment secrets
+secrets/
