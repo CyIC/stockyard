@@ -20,7 +20,7 @@ echo "==> Upgrading pip"
 # toolchain below is declared only as a group in pyproject.toml.
 python -m pip install --quiet --upgrade pip
 
-echo "==> Installing warren_bot and its runtime dependencies"
+echo "==> Installing stockyard and its runtime dependencies"
 # Deliberately pip, not `poetry install`. ../Dockerfile documents why: poetry's lock
 # resolver backtracks this dependency graph to pre-3.13 releases that ship no cp313 wheels,
 # so a locked install on Python 3.13 either builds numpy/pandas/scipy from source or fails
@@ -33,8 +33,8 @@ echo "==> Installing the dev toolchain (PEP 735 'dev' group)"
 python -m pip install --group dev
 
 echo "==> Creating runtime output directories"
-# WARREN_DATA_DIR points at ./data; the bot also writes logs. Both are gitignored.
-mkdir -p data logs
+# STOCKYARD_DATA_DIR points at ./data (gitignored); logs go to stderr.
+mkdir -p data
 
 echo
 echo "================================================================"
@@ -49,7 +49,7 @@ echo
 echo "Run the suite with:   pytest src/tests/ -q"
 echo "Full gate with:       tox"
 echo
-if [ ! -f .env ]; then
-    echo "NOTE: no .env present. The Discord bot needs a token there before"
-    echo "      'python -m warren_bot' will start. Tests do not require it."
+if [ -z "${DISCORD_TOKEN:-}${DISCORD_TOKEN_FILE:-}" ]; then
+    echo "NOTE: DISCORD_TOKEN is not set. Warren ('warren' or 'python -m stockyard.bot') needs it;"
+    echo "      the CLI ('stockyard report MSFT') and the tests do not."
 fi

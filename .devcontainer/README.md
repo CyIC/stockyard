@@ -36,8 +36,10 @@ graphical agent is reachable. Git pushes still need your SSH key: Dev Containers
 host's SSH agent, so start one on the host (`ssh-agent` + `ssh-add`) before opening the
 container, or push from the host.
 
-**No `.env` means the bot will not start.** Tests do not need it; `python -m warren_bot` does.
-`WARREN_DATA_DIR` is preset to `./data`, and `MPLBACKEND=Agg` keeps chart rendering headless.
+**Warren needs `DISCORD_TOKEN` in the environment.** Stockyard does not read `.env` itself (only Docker
+Compose does), so `export DISCORD_TOKEN=...` in the terminal before `warren` or `python -m stockyard.bot`. The
+CLI (`stockyard report MSFT`) and the tests need no token. `STOCKYARD_DATA_DIR` is preset to `./data` (the
+same-day cache), and `MPLBACKEND=Agg` keeps chart rendering headless.
 
 **Docker is the host daemon.** `docker` and `docker compose` target the host, so images you
 build are visible on the host and `scripts/build-secure.sh` works. This is host-daemon

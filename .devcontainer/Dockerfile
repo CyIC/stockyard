@@ -1,5 +1,5 @@
 # ======================================================================================
-# DEVELOPMENT CONTAINER FOR WARREN BOT
+# DEVELOPMENT CONTAINER FOR STOCKYARD
 #
 # This is intentionally NOT derived from the project's production Dockerfile. That image is
 # Chainguard distroless with no shell, which a devcontainer cannot use. Production hardening
@@ -10,15 +10,16 @@ ARG BASE_IMAGE=mcr.microsoft.com/devcontainers/python:1-3.13-bookworm
 FROM ${BASE_IMAGE}
 
 # Pinned to the version that generated poetry.lock. An older Poetry rewrites the lock on
-# contact: a 2.1.2 run against this 2.4.1 lock stripped 1680 lines. Note ../Dockerfile still
+# contact: a 2.1.2 run against a 2.4.1 lock stripped 1680 lines. Keep this equal to the version in
+# poetry.lock's header (src/tests/test_deployment.py checks it). Note ../Dockerfile still
 # pins 2.1.0 -- it only ever calls `poetry build` so it cannot corrupt the lock, but the two
 # pins disagreeing is worth resolving.
-ARG POETRY_VERSION=2.4.1
+ARG POETRY_VERSION=2.5.1
 
 # The venv lives outside the workspace on purpose: the workspace is a bind mount from a
 # Windows host, where a venv is slow over thousands of small files and would collide with the
 # host's own venv/ directory. MPLBACKEND keeps chart rendering headless -- there is no display
-# here, and test_stock_analysis.py does not set a backend itself.
+# here. (stockyard.render.charts uses the Figure API, which needs no backend; this covers ad-hoc pyplot use.)
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
