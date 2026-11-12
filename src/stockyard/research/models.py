@@ -31,3 +31,27 @@ class EarningsGrowthResult:
 
     years: tuple  # ((fiscal_year, net_income, change, pct_change), ...); change/pct None for the first year
     warnings: tuple
+
+
+@dataclass(frozen=True)
+class CashRow:  # pylint: disable=too-many-instance-attributes
+    """One Cash Position metric across the two latest fiscal years and the latest quarter."""
+
+    metric: str
+    group: str  # "cash" or "working_capital"
+    latest: float | None
+    prior: float | None
+    difference: float | None
+    pct_difference: float | None
+    quarter: float | None
+
+
+@dataclass(frozen=True)
+class CashPositionResult:
+    """Balance-sheet comparison: latest vs prior fiscal year, plus the latest quarter."""
+
+    latest_label: str | None
+    prior_label: str | None
+    quarter_label: str | None
+    rows: tuple
+    warnings: tuple

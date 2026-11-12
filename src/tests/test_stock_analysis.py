@@ -82,19 +82,6 @@ class StockAnalysisTestCase(unittest.TestCase):
         for file in files:
             self.assertIsInstance(file, str)
 
-    def test_cash_position(self):
-        """Test cash position printing module."""
-        # GIVEN
-        balance_sheet = _load_reports("balance_sheet")
-
-        # WHEN
-        msg = stock_analysis.cash_position(balance_sheet)
-
-        # THEN
-        self.assertIsInstance(msg, list)
-        for chunk in msg:
-            self.assertIsInstance(chunk, str)
-
     def test_revenue_growth(self):
         """Test cash position revenue_growth module."""
         # GIVEN
@@ -182,8 +169,7 @@ class StockAnalysisTestCase(unittest.TestCase):
             stock_analysis, "record_of_stock", MagicMock(return_value=(["msg"], 5.0))
         ), patch.object(
             stock_analysis, "trend", MagicMock(return_value=("trend", []))
-        ), patch.object(
-            stock_analysis, "cash_position", MagicMock()
+
         ), patch.object(
             stock_analysis, "revenue_growth", MagicMock()
 

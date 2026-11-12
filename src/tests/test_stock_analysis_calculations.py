@@ -82,44 +82,6 @@ def _annual_index(count):
 
 
 # --------------------------------------------------------------------------------------
-# populate_vars
-# --------------------------------------------------------------------------------------
-@pytest.mark.parametrize(
-    "old, new, expected_diff, expected_percent",
-    [
-        (100.0, 120.0, 20.0, 0.2),
-        (100.0, 80.0, -20.0, -0.2),
-        # abs() in the denominator keeps the sign of the swing, not of the base
-        (-50.0, 50.0, 100.0, 2.0),
-        (-50.0, -75.0, -25.0, -0.5),
-    ],
-)
-def test_populate_vars_computes_difference_and_percent(old, new, expected_diff, expected_percent):
-    diff, percent = stock_analysis.populate_vars(old, new)
-
-    assert diff == pytest.approx(expected_diff)
-    assert percent == pytest.approx(expected_percent)
-
-
-def test_populate_vars_returns_zero_percent_for_numpy_zero_base():
-    """A zero base pulled from a DataFrame must yield 0, not inf.
-
-    Every real caller in cash_position passes numpy scalars sliced out of a DataFrame, and
-    numpy division by zero returns inf instead of raising, so the ZeroDivisionError guard
-    never fires on the production data path.
-    """
-    frame = pd.DataFrame({"value": [0.0, 5.0]}, index=_annual_index(2))
-    old = frame["value"].iloc[0]
-    new = frame["value"].iloc[1]
-    assert isinstance(old, np.floating), "fixture must reproduce the numpy scalar callers pass"
-
-    diff, percent = stock_analysis.populate_vars(old, new)
-
-    assert diff == pytest.approx(5.0)
-    assert percent == 0
-
-
-# --------------------------------------------------------------------------------------
 # predict_low
 # --------------------------------------------------------------------------------------
 @pytest.mark.parametrize(
@@ -269,7 +231,6 @@ def _run_with_mocked_sections(earnings, **section_mocks):
     defaults = {
         "record_of_stock": MagicMock(return_value=(["msg"], 5.0)),
         "trend": MagicMock(return_value=("trend", [])),
-        "cash_position": MagicMock(),
         "revenue_growth": MagicMock(),
         "risk_reward": MagicMock(return_value=("risk_reward", [])),
     }
@@ -400,51 +361,6 @@ def test_record_of_stock_returns_high_yield_in_percent_units():
 
     # 12 monthly dividends of 0.25 = 3.00 against the oldest year's low of 50
     assert high_yield == pytest.approx(3.0 / 50.0 * 100)
-
-
-# --------------------------------------------------------------------------------------
-# cash_position
-# --------------------------------------------------------------------------------------
-def _balance_sheet_fixture():
-    """Build a three-year balance sheet so the oldest row differs from the prior year."""
-    index = _annual_index(3)
-    columns = {
-        "cashAndCashEquivalentsAtCarryingValue": [100.0, 200.0, 300.0],
-        "shortTermInvestments": [10.0, 20.0, 30.0],
-        "longTermDebt": [50.0, 60.0, 70.0],
-        "commonStockSharesOutstanding": [1000.0, 1000.0, 1000.0],
-        "currentNetReceivables": [40.0, 50.0, 60.0],
-        "inventory": [5.0, 6.0, 7.0],
-        "otherCurrentAssets": [1.0, 2.0, 3.0],
-        "totalCurrentAssets": [146.0, 258.0, 370.0],
-        "currentAccountsPayable": [500.0, 700.0, 900.0],
-        "shortTermDebt": [11.0, 12.0, 13.0],
-        "otherCurrentLiabilities": [2.0, 3.0, 4.0],
-        "totalCurrentLiabilities": [513.0, 715.0, 917.0],
-    }
-    return {"annualReports": pd.DataFrame(columns, index=index)}
-
-
-def test_cash_position_compares_payables_against_the_prior_year():
-    """Payables must compare the two most recent years, like every other row in the table.
-
-    Indexing [0] instead of [-2] reaches back to the oldest report, so the Payables row is
-    the only one in the table measured over a different span than its own column headers.
-    """
-    msg = stock_analysis.cash_position(_balance_sheet_fixture())
-
-    cells = _row("\n".join(msg), "Payables")
-    assert _money(cells[2]) == pytest.approx(700.0)  # prior year, not the oldest (500)
-    assert _pct(cells[4]) == pytest.approx((900.0 - 700.0) / 700.0, abs=1e-4)
-
-
-def test_cash_position_compares_short_term_debt_against_the_prior_year():
-    """Sibling row that already used [-2]; pins the convention the Payables fix restores."""
-    msg = stock_analysis.cash_position(_balance_sheet_fixture())
-
-    cells = _row("\n".join(msg), "Short Term Debt")
-    assert _money(cells[2]) == pytest.approx(12.0)
-    assert _pct(cells[4]) == pytest.approx((13.0 - 12.0) / 12.0, abs=1e-4)
 
 
 # --------------------------------------------------------------------------------------

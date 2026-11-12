@@ -11,13 +11,25 @@ def _frame(rows: dict, columns: list[str]) -> pd.DataFrame:
     return frame.sort_index()
 
 
-def stock_data(annual=None, eps=None, prices=None, ticker="TEST", daily=None) -> StockData:
+def _sheet(rows) -> pd.DataFrame:
+    if not rows:
+        return pd.DataFrame()
+    frame = pd.DataFrame.from_dict(rows, orient="index", dtype=float)
+    frame.index = pd.to_datetime(frame.index)
+    return frame.sort_index()
+
+
+def stock_data(  # pylint: disable=too-many-arguments
+    annual=None, eps=None, prices=None, ticker="TEST", daily=None, balance=None, balance_quarterly=None
+) -> StockData:
     """Build StockData.
 
     :param annual: {period_end: (revenue, net_income)}
     :param eps: [(announced, reported_eps)]
     :param prices: (first_date, last_date) for a flat daily price series, or None
     :param daily: an explicit daily price frame (overrides ``prices``)
+    :param balance: {period_end: {canonical_column: value}} annual balance sheets
+    :param balance_quarterly: the same for quarterly balance sheets
     """
     income = _frame(annual or {}, ["totalRevenue", "netIncome"]) if annual else pd.DataFrame()
     earnings = (
@@ -37,8 +49,8 @@ def stock_data(annual=None, eps=None, prices=None, ticker="TEST", daily=None) ->
         ticker=ticker,
         income_annual=income,
         income_quarterly=empty,
-        balance_annual=empty,
-        balance_quarterly=empty,
+        balance_annual=_sheet(balance),
+        balance_quarterly=_sheet(balance_quarterly),
         cashflow_annual=empty,
         cashflow_quarterly=empty,
         earnings=earnings,

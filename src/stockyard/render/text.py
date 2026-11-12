@@ -2,7 +2,7 @@
 """Plain-text rendering of section results, shared by the CLI and (wrapped) Discord (design §6)."""
 from dataclasses import dataclass
 
-from stockyard.research.models import EarningsGrowthResult, PastEpsResult, PastSalesResult
+from stockyard.research.models import CashPositionResult, EarningsGrowthResult, PastEpsResult, PastSalesResult
 
 NA = "n/a"
 
@@ -85,3 +85,60 @@ def earnings_growth(result: EarningsGrowthResult) -> RenderedSection:
     ]
     lines = _table(["Fiscal year", "Net income", "Change", "% change"], rows) + _warnings(result.warnings)
     return RenderedSection("Earnings Growth", "\n".join(lines))
+
+
+CASH_LABELS = {
+    "cash": "Cash and equivalents",
+    "short_term_investments": "Short-term investments",
+    "total_cash": "Total cash",
+    "long_term_debt": "Long-term debt",
+    "net_cash": "Net cash",
+    "shares_outstanding": "Shares outstanding",
+    "net_cash_per_share": "Net cash per share",
+    "receivables": "Receivables",
+    "inventory": "Inventory",
+    "other_current_assets": "Other current assets",
+    "current_assets": "Current assets",
+    "payables": "Payables",
+    "short_term_debt": "Short-term debt",
+    "other_current_liabilities": "Other current liabilities",
+    "current_liabilities": "Current liabilities",
+    "working_capital": "Working capital",
+    "working_capital_per_share": "Working capital per share",
+}
+
+
+def _count(value: float | None) -> str:
+    return NA if value is None else f"{value:,.0f}"
+
+
+def _cash_value(metric: str, value: float | None) -> str:
+    if metric == "shares_outstanding":
+        return _count(value)
+    return _per_share(value) if metric.endswith("_per_share") else _money(value)
+
+
+def cash_position(result: CashPositionResult) -> RenderedSection:
+    """Cash Position: a cash table and a working-capital table, latest vs prior fiscal year and latest quarter."""
+    lines = []
+    for group, title in (("cash", "Cash"), ("working_capital", "Working capital")):
+        header = [title, result.latest_label or NA, result.prior_label or NA, "Difference", "% Difference"]
+        if result.quarter_label:
+            header.append(result.quarter_label)
+        rows = []
+        for row in (row for row in result.rows if row.group == group):
+            cells = [
+                CASH_LABELS[row.metric],
+                _cash_value(row.metric, row.latest),
+                _cash_value(row.metric, row.prior),
+                _cash_value(row.metric, row.difference),
+                _pct(row.pct_difference),
+            ]
+            if result.quarter_label:
+                cells.append(_cash_value(row.metric, row.quarter))
+            rows.append(cells)
+        if lines:
+            lines.append("")
+        lines += _table(header, rows)
+    lines += _warnings(result.warnings)
+    return RenderedSection("Cash Position", "\n".join(lines))
