@@ -11,12 +11,13 @@ def _frame(rows: dict, columns: list[str]) -> pd.DataFrame:
     return frame.sort_index()
 
 
-def stock_data(annual=None, eps=None, prices=None, ticker="TEST") -> StockData:
+def stock_data(annual=None, eps=None, prices=None, ticker="TEST", daily=None) -> StockData:
     """Build StockData.
 
     :param annual: {period_end: (revenue, net_income)}
     :param eps: [(announced, reported_eps)]
     :param prices: (first_date, last_date) for a flat daily price series, or None
+    :param daily: an explicit daily price frame (overrides ``prices``)
     """
     income = _frame(annual or {}, ["totalRevenue", "netIncome"]) if annual else pd.DataFrame()
     earnings = (
@@ -24,12 +25,12 @@ def stock_data(annual=None, eps=None, prices=None, ticker="TEST") -> StockData:
         if eps
         else pd.DataFrame(columns=["reported_eps"])
     )
-    if prices:
-        index = pd.bdate_range(prices[0], prices[1])
+    if daily is None and prices:
         daily = pd.DataFrame(
-            {"open": 10.0, "high": 11.0, "low": 9.0, "close": 10.0, "volume": 100, "dividend": 0.0}, index=index
+            {"open": 10.0, "high": 11.0, "low": 9.0, "close": 10.0, "volume": 100, "dividend": 0.0},
+            index=pd.bdate_range(prices[0], prices[1]),
         )
-    else:
+    elif daily is None:
         daily = pd.DataFrame(columns=["open", "high", "low", "close", "volume", "dividend"])
     empty = pd.DataFrame()
     return StockData(
@@ -48,3 +49,19 @@ def stock_data(annual=None, eps=None, prices=None, ticker="TEST") -> StockData:
 def quarterly_eps(quarter_ends: list[str], value: float = 1.0, lag_days: int = 25) -> list:
     """One announcement ``lag_days`` after each quarter-end."""
     return [((pd.Timestamp(end) + pd.DateOffset(days=lag_days)).strftime("%Y-%m-%d"), value) for end in quarter_ends]
+
+
+def daily_bars(bars: dict, base_low: float = 9.0, base_high: float = 11.0) -> pd.DataFrame:
+    """Flat business-day bars between the first and last given dates, overridden by ``bars``.
+
+    :param bars: {date: {"high": .., "low": .., "dividend": ..}} for the days that matter
+    """
+    dates = sorted(pd.Timestamp(day) for day in bars)
+    frame = pd.DataFrame(
+        {"open": 10.0, "high": base_high, "low": base_low, "close": 10.0, "volume": 100, "dividend": 0.0},
+        index=pd.bdate_range(dates[0], dates[-1]),
+    )
+    for day, values in bars.items():
+        for column, value in values.items():
+            frame.loc[pd.Timestamp(day), column] = value
+    return frame.sort_index()
