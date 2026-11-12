@@ -98,36 +98,34 @@ With Warren, you can:
 ### Folder Structure
 ```
 .
-├-- .do                                     # Digital Ocean Actions folder
-├-- .github                                 # Github Actions folder
-├-- src/                                
-|   ├-- tests/                              # unit tests        
-|   └-- warren_bot/                         # main module for application
-|       ├-- resources/
-|       ├-- __init__.py                     # module init
-|       ├-- __main__.py                     # module main
-|       ├-- alphavantage.py                 # file for alphavantage transactions
-|       ├-- analysis.py                     # file for quant analysis methods
-|       ├-- logging_config.py               # central module for controlling logging
-|       ├-- portfolio_analysis.py           # file for portfolio analysis function
-|       ├-- stock_analysis.py               # file for stock analysis function
-|       └-- utilites.py                     # file for general utility functions
-├-- .bumpversion.cfg                        # bumpversion configuration for version incrementation
-├-- .gitignore                              # Typical gitignore file
-├-- bot_config.template.info                # INI template for bot_config (remove .template for function)
-├-- CHANGELOG.md                            # running record (human readable) of version changes
-├-- club_info_template.json                 # JSON template for club/portfolio info
-├-- club_stocks.csv                         # CSV template for club/portfolio buy and sell of stocks
-├-- CONTRIBUTING.md                         # Directions and standards for contributing to this application
-├-- dchat.py                                # Discord chatbot entrypoint
-├-- humans.txt                              # Running list of all contributors
-├-- LICENSE                                 # Source of truth for required LICENSE
-├-- pyproject.toml                          # Python toml setup configurations
-├-- README.md                               # This file
-├-- setup.py                                # Backwards compatable python setup script
-├-- stocks.pkl                              # Pickle file of latest stocks download (prevent extra calls to 
-|                                           # apvantage API)
-└-- tox.ini                                 # configuration file for testing via tox
+├-- .do/                          # DigitalOcean deployment config
+├-- .github/workflows/            # GitHub Actions
+├-- docs/
+|   ├-- adr/                      # architecture decision records
+|   └-- design/                   # v1 design and implementation plan
+├-- scripts/
+|   ├-- record_raw_fixtures.py    # record raw yfinance responses as test fixtures
+|   └-- build-*.sh / .bat         # Docker build helpers
+├-- src/
+|   ├-- stockyard/
+|   |   ├-- data/                 # fetch (yfinance), same-day cache, ticker validation, fiscal-year alignment
+|   |   ├-- research/             # Stock Selection Guide definitions, sections and build_report
+|   |   ├-- render/               # text, Discord, JSON and chart renderers
+|   |   ├-- bot/                  # Warren, the Discord bot (console script `warren`)
+|   |   ├-- clock.py              # the single wall-clock read (New York date)
+|   |   ├-- config.py             # settings from environment variables
+|   |   ├-- logging_config.py     # logging to stderr
+|   |   ├-- report_warning.py     # structured warnings
+|   |   └-- utilities.py          # data-directory path, Discord token
+|   └-- tests/                    # pytest suite; fixtures/ holds recorded yfinance responses
+├-- .env.template                 # environment variables (copy to .env)
+├-- CHANGELOG.md                  # human-readable record of version changes
+├-- CONTEXT.md                    # glossary of domain terms
+├-- CONTRIBUTING.md               # contribution guidelines
+├-- DOCKER.md                     # container build and deployment
+├-- Dockerfile, docker-compose*.yml
+├-- pyproject.toml / poetry.lock  # package metadata and locked dependencies
+└-- tox.ini                       # test, lint and type-check environments
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

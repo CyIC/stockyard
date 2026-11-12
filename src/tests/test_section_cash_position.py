@@ -11,18 +11,18 @@ from tests.fixture_replay import load_stock_data
 
 AS_OF = datetime.date(2026, 11, 11)
 FULL = {
-    "cashAndCashEquivalentsAtCarryingValue": 100.0,
-    "shortTermInvestments": 50.0,
-    "longTermDebt": 30.0,
-    "commonStockSharesOutstanding": 10.0,
-    "currentNetReceivables": 20.0,
+    "cash": 100.0,
+    "short_term_investments": 50.0,
+    "long_term_debt": 30.0,
+    "shares_outstanding": 10.0,
+    "receivables": 20.0,
     "inventory": 15.0,
-    "otherCurrentAssets": 5.0,
-    "totalCurrentAssets": 190.0,
-    "currentAccountsPayable": 25.0,
-    "shortTermDebt": 10.0,
-    "otherCurrentLiabilities": 5.0,
-    "totalCurrentLiabilities": 40.0,
+    "other_current_assets": 5.0,
+    "current_assets": 190.0,
+    "payables": 25.0,
+    "short_term_debt": 10.0,
+    "other_current_liabilities": 5.0,
+    "current_liabilities": 40.0,
 }
 
 
@@ -37,7 +37,7 @@ def _row(result, metric):
 
 
 def test_compares_the_two_latest_fiscal_years_with_derived_totals():
-    prior = {**FULL, "cashAndCashEquivalentsAtCarryingValue": 80.0}
+    prior = {**FULL, "cash": 80.0}
     result = _section({"2024-12-31": prior, "2025-12-31": FULL})
 
     assert (result.latest_label, result.prior_label) == ("FY2025", "FY2024")
@@ -53,7 +53,7 @@ def test_compares_the_two_latest_fiscal_years_with_derived_totals():
 
 def test_missing_line_items_count_as_zero_in_totals_and_are_named_in_warnings():
     """D18: yfinance omits zero items (a company with no debt and no inventory)."""
-    sheet = {k: v for k, v in FULL.items() if k not in ("longTermDebt", "inventory")}
+    sheet = {k: v for k, v in FULL.items() if k not in ("long_term_debt", "inventory")}
     result = _section({"2024-12-31": sheet, "2025-12-31": sheet})
 
     assert _row(result, "long_term_debt").latest is None
@@ -64,18 +64,16 @@ def test_missing_line_items_count_as_zero_in_totals_and_are_named_in_warnings():
 
 
 def test_a_total_with_every_component_missing_stays_unavailable():
-    sheet = {
-        k: v for k, v in FULL.items() if k not in ("cashAndCashEquivalentsAtCarryingValue", "shortTermInvestments")
-    }
+    sheet = {k: v for k, v in FULL.items() if k not in ("cash", "short_term_investments")}
     result = _section({"2025-12-31": sheet, "2024-12-31": sheet})
     assert _row(result, "total_cash").latest is None
 
 
 def test_missing_shares_leave_per_share_figures_unavailable_not_divided_by_zero():
-    sheet = {k: v for k, v in FULL.items() if k != "commonStockSharesOutstanding"}
+    sheet = {k: v for k, v in FULL.items() if k != "shares_outstanding"}
     result = _section({"2025-12-31": sheet, "2024-12-31": sheet})
     assert _row(result, "net_cash_per_share").latest is None
-    assert "commonStockSharesOutstanding" not in {w.figure for w in result.warnings}
+    assert "shares_outstanding" not in {w.figure for w in result.warnings}
 
 
 def test_empty_sheets_and_sheets_after_as_of_are_ignored():

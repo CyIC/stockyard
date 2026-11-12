@@ -39,7 +39,7 @@ def stock_data(  # pylint: disable=too-many-arguments
     :param balance_quarterly: the same for quarterly balance sheets
     :param quarterly: {quarter_end: (revenue, net_income)} quarterly income statements
     """
-    income = _frame(annual or {}, ["totalRevenue", "netIncome"]) if annual else pd.DataFrame()
+    income = _frame(annual or {}, ["revenue", "net_income"]) if annual else pd.DataFrame()
     earnings = (
         _frame({announced: (value,) for announced, value in eps}, ["reported_eps"])
         if eps
@@ -56,7 +56,7 @@ def stock_data(  # pylint: disable=too-many-arguments
     return StockData(
         ticker=ticker,
         income_annual=income,
-        income_quarterly=_frame(quarterly, ["totalRevenue", "netIncome"]) if quarterly else empty,
+        income_quarterly=_frame(quarterly, ["revenue", "net_income"]) if quarterly else empty,
         balance_annual=_sheet(balance),
         balance_quarterly=_sheet(balance_quarterly),
         cashflow_annual=empty,

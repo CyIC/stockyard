@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
-"""Collection of useful utilities for stockyard.
-
-Includes getting data from alphavantage and processing data structures.
-"""
+"""Utilities shared by stockyard's front ends: the data-directory path and the Discord token."""
 import configparser
 import os
 

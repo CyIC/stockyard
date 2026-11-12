@@ -75,9 +75,9 @@ def test_ticker_is_normalised():
 def test_statements_are_indexed_by_period_end_oldest_first_with_canonical_columns():
     data, _ = _fetch()
     assert list(data.income_annual.index) == [pd.Timestamp(d) for d in reversed(ANNUAL)]
-    assert data.income_annual["totalRevenue"].tolist() == [1, 2, 3, 4, 5]
-    assert data.income_annual["netIncome"].tolist() == [10, 20, 30, 40, 50]
-    assert data.balance_annual["cashAndCashEquivalentsAtCarryingValue"].tolist() == [5, 6, 7, 8, 9]
+    assert data.income_annual["revenue"].tolist() == [1, 2, 3, 4, 5]
+    assert data.income_annual["net_income"].tolist() == [10, 20, 30, 40, 50]
+    assert data.balance_annual["cash"].tolist() == [5, 6, 7, 8, 9]
 
 
 def test_no_synthetic_annual_rows_are_built_from_quarters():

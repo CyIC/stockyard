@@ -196,7 +196,7 @@ The Discord bot responds to these commands:
 1. **Discord Bot Token**: Create bot at https://discord.com/developers/applications
 2. **Club Data**: Configure `club_info.json` and `club_stocks.csv` for portfolio tracking
 
-Note: yfinance does not require an API key, making setup simpler than previous Alpha Vantage integration.
+Note: market data comes from Yahoo Finance via yfinance, which does not require an API key.
 
 ## Code Style Guidelines
 

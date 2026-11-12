@@ -138,8 +138,8 @@ def aligned_annual_fundamentals(data: StockData, as_of: datetime.date) -> Aligne
             FiscalYear(
                 fiscal_year=f"FY{period_end.year}",
                 period_end=period_end.date(),
-                revenue=_value(row, "totalRevenue"),
-                net_income=_value(row, "netIncome"),
+                revenue=_value(row, "revenue"),
+                net_income=_value(row, "net_income"),
                 quarter_eps=quarters,
                 reported_eps=None if None in quarters else sum(quarters),
                 window_start=start,

@@ -13,6 +13,7 @@ import pandas as pd
 
 from stockyard.data.fundamentals import YRS_LOOKBACK, AlignedFundamentals
 from stockyard.data.snapshot import StockData
+from stockyard.data.yfinance_source import BALANCE_FIELD_MAP
 from stockyard.report_warning import ReportWarning
 from stockyard.research import definitions
 from stockyard.research import price_stats
@@ -97,20 +98,7 @@ def earnings_growth(data: StockData, fundamentals: AlignedFundamentals, as_of: d
     return EarningsGrowthResult(years=tuple(rows), warnings=warnings)
 
 
-CASH_ITEMS = {
-    "cash": "cashAndCashEquivalentsAtCarryingValue",
-    "short_term_investments": "shortTermInvestments",
-    "long_term_debt": "longTermDebt",
-    "shares_outstanding": "commonStockSharesOutstanding",
-    "receivables": "currentNetReceivables",
-    "inventory": "inventory",
-    "other_current_assets": "otherCurrentAssets",
-    "current_assets": "totalCurrentAssets",
-    "payables": "currentAccountsPayable",
-    "short_term_debt": "shortTermDebt",
-    "other_current_liabilities": "otherCurrentLiabilities",
-    "current_liabilities": "totalCurrentLiabilities",
-}
+CASH_ITEMS = tuple(BALANCE_FIELD_MAP)  # balance-sheet line items, named as in StockData
 CASH_LAYOUT = (
     (
         "cash",
@@ -146,8 +134,8 @@ SUMMED_ITEMS = ("cash", "short_term_investments", "long_term_debt")  # D18: miss
 def _sheet_values(row, label: str) -> tuple[dict, list]:
     """Line items, derived totals and the warnings for one balance sheet (D18)."""
     items = {}
-    for metric, column in CASH_ITEMS.items():
-        value = row.get(column)
+    for metric in CASH_ITEMS:
+        value = row.get(metric)
         items[metric] = None if value is None or math.isnan(value) else float(value)
     warnings = []
     for metric in CASH_ITEMS:
@@ -357,7 +345,7 @@ def _column(frame, name: str) -> pd.Series:
 def trend(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> TrendResult:
     """Trend: quarterly revenue and EPS, monthly highs and lows with 4-month averages (chart data)."""
     del fundamentals
-    revenue = _column(_within(data.income_quarterly, as_of), "totalRevenue")
+    revenue = _column(_within(data.income_quarterly, as_of), "revenue")
     eps = _column(_within(data.earnings, as_of), "reported_eps")
     prices = _within(data.daily_prices, as_of)
     monthly = []

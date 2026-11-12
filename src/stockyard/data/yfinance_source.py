@@ -3,32 +3,32 @@
 import numpy as np
 import pandas as pd
 
-# Map alphavantage field names (which the report code consumes) to the candidate yfinance
-# row labels. yfinance label availability varies by company, so each target lists fallbacks
-# tried in order; missing labels become NaN columns so downstream access never KeyErrors.
+# Map stockyard's column names to candidate yfinance row labels. Label availability varies by
+# company, so each column lists fallbacks tried in order; missing labels become NaN columns so
+# downstream access never raises KeyError.
 INCOME_FIELD_MAP = {
-    "totalRevenue": ["Total Revenue"],
-    "netIncome": ["Net Income", "Net Income Common Stockholders"],
+    "revenue": ["Total Revenue"],
+    "net_income": ["Net Income", "Net Income Common Stockholders"],
 }
 
 BALANCE_FIELD_MAP = {
-    "cashAndCashEquivalentsAtCarryingValue": ["Cash And Cash Equivalents"],
-    "shortTermInvestments": ["Other Short Term Investments", "Short Term Investments"],
-    "longTermDebt": ["Long Term Debt"],
-    "commonStockSharesOutstanding": ["Ordinary Shares Number", "Share Issued"],
-    "currentNetReceivables": ["Receivables", "Accounts Receivable", "Net Receivables"],
+    "cash": ["Cash And Cash Equivalents"],
+    "short_term_investments": ["Other Short Term Investments", "Short Term Investments"],
+    "long_term_debt": ["Long Term Debt"],
+    "shares_outstanding": ["Ordinary Shares Number", "Share Issued"],
+    "receivables": ["Receivables", "Accounts Receivable", "Net Receivables"],
     "inventory": ["Inventory"],
-    "otherCurrentAssets": ["Other Current Assets"],
-    "totalCurrentAssets": ["Current Assets", "Total Current Assets"],
-    "currentAccountsPayable": ["Accounts Payable", "Payables"],
-    "shortTermDebt": ["Current Debt", "Current Debt And Capital Lease Obligation"],
-    "otherCurrentLiabilities": ["Other Current Liabilities"],
-    "totalCurrentLiabilities": ["Current Liabilities", "Total Current Liabilities"],
+    "other_current_assets": ["Other Current Assets"],
+    "current_assets": ["Current Assets", "Total Current Assets"],
+    "payables": ["Accounts Payable", "Payables"],
+    "short_term_debt": ["Current Debt", "Current Debt And Capital Lease Obligation"],
+    "other_current_liabilities": ["Other Current Liabilities"],
+    "current_liabilities": ["Current Liabilities", "Total Current Liabilities"],
 }
 
 CASHFLOW_FIELD_MAP = {
-    "dividendPayout": ["Cash Dividends Paid", "Common Stock Dividend Paid"],
-    "netIncome": ["Net Income", "Net Income From Continuing Operations"],
+    "dividends_paid": ["Cash Dividends Paid", "Common Stock Dividend Paid"],
+    "net_income": ["Net Income", "Net Income From Continuing Operations"],
 }
 
 
@@ -49,20 +49,20 @@ def _normalize_index(df: pd.DataFrame):
 
 
 def _remap_columns(df: pd.DataFrame, field_map: dict):
-    """Translate yfinance row labels into the alphavantage column names the report expects.
+    """Translate yfinance row labels into stockyard's column names.
 
     :param df: (pandas.DataFrame) transposed yfinance statement (dates as index, items as columns)
-    :param field_map: (dict) {alphavantage_name: [candidate yfinance labels]}
-    :return: DataFrame with alphavantage-named, numeric columns; missing source labels become NaN
+    :param field_map: (dict) {column_name: [candidate yfinance labels]}
+    :return: DataFrame with stockyard-named, numeric columns; missing source labels become NaN
     """
     if df is None or df.empty:
         return pd.DataFrame()
 
     remapped = pd.DataFrame(index=df.index)
-    for av_name, yf_candidates in field_map.items():
-        remapped[av_name] = np.nan
+    for column, yf_candidates in field_map.items():
+        remapped[column] = np.nan
         for label in yf_candidates:
             if label in df.columns:
-                remapped[av_name] = pd.to_numeric(df[label], errors="coerce")
+                remapped[column] = pd.to_numeric(df[label], errors="coerce")
                 break
     return _normalize_index(remapped)
