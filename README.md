@@ -146,24 +146,41 @@ using poetry.
 
 ### Installation
 
-1. Get a free API Key at [https://www.alphavantage.co/](https://www.alphavantage.co/)
-2. Clone the repo
+1. Clone the repo
    ```sh
-   git clone https://github.com/CyIC/warren_bot.git
+   git clone https://github.com/CyIC/stockyard.git
+   cd stockyard
    ```
-3. Move into the repo directory
-   ```shell
-   cd warren_bot
-   ```
-3. Install Python dependencies
+2. Install Python dependencies
    ```sh
    poetry install
    ```
-4. Enter your Alphavantage API in `bot_config.ini`
-   ```ini
-   [alphavantage]
-   key = `ENTER YOUR API`
+3. Create your configuration from the template and fill in your values (see [Configuration](#configuration))
+   ```sh
+   cp .env.template .env
    ```
+
+Market data comes from Yahoo Finance via yfinance, which needs no API key.
+
+### Configuration
+
+Stockyard is configured with environment variables. [`.env.template`](./.env.template) lists them all;
+copy it to `.env`. Docker Compose reads `.env` automatically. For local runs, set the variables in your
+shell, e.g. `export LOGGING_LEVEL=DEBUG` (bash) or `$env:LOGGING_LEVEL = "DEBUG"` (PowerShell).
+
+| Variable | Used by | Default | Purpose |
+|---|---|---|---|
+| `STOCKYARD_DATA_DIR` | bot, CLI | current directory (`/app/data` in Docker) | Writable directory for the same-day market-data cache (`cache/<TICKER>.json`). Charts go to a per-request temporary directory (bot) or `--charts DIR` (CLI). |
+| `LOGGING_LEVEL` | bot, CLI | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`. Logs go to stderr, so CLI output on stdout stays clean. |
+| `DISCORD_TOKEN` | bot | — | The Discord bot token. |
+| `DISCORD_TOKEN_FILE` | bot | — | Path to a file holding the token (e.g. a Docker/Swarm secret at `/run/secrets/discord_token`). Used when `DISCORD_TOKEN` is not set. |
+
+The bot resolves its token from `DISCORD_TOKEN`, then `DISCORD_TOKEN_FILE`, then a `[discord] token` entry in
+a local `bot_config.ini`; if none is found it exits with a message saying so. The CLI needs no token.
+
+**Upgrading from Warren Bot 0.1:** `WARREN_DATA_DIR` is now `STOCKYARD_DATA_DIR`, and `LOGGING` is now
+`LOGGING_LEVEL`. The old names are not read. `DEBUG_MODE`, `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY` and
+`FRED_KEY` remain in the template for deployment tooling but are not read by stockyard v1.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

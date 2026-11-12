@@ -133,6 +133,8 @@ celerybeat.pid
 
 # Environments
 .env
+# STOCKYARD_DATA_DIR default in .env.template (market-data cache, charts)
+/data/
 .venv
 env/
 venv/
