@@ -24,3 +24,13 @@ def _healthchecks():
 def test_healthcheck_snippet_succeeds(code):
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("name", ["app.yml", "deploy.yaml"])
+def test_digitalocean_runs_warren_as_a_worker_from_the_dockerfile(name):
+    spec = (ROOT / ".do" / name).read_text(encoding="utf-8")
+
+    assert "workers:" in spec and "services:" not in spec  # a Discord bot has no HTTP port
+    assert "dockerfile_path: Dockerfile" in spec and (ROOT / "Dockerfile").exists()
+    assert re.search(r"key: DISCORD_TOKEN\n\s+scope: RUN_TIME\n\s+type: SECRET", spec)
+    assert re.search(r"key: STOCKYARD_DATA_DIR\n\s+scope: RUN_TIME\n\s+value: /tmp/", spec)  # no volumes there

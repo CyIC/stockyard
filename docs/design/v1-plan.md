@@ -156,4 +156,4 @@ Tests call `stockyard.cli.main(argv)` with a fake data source:
 
 | Needed by | Item |
 |---|---|
-| Phase 9 | design §17.1 CI platform; §17.2 `.do/` |
+| ~~Phase 9~~ | ~~design §17.1 CI platform; §17.2 `.do/`~~ resolved: D21, D22 |
