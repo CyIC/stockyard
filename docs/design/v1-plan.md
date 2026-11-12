@@ -137,7 +137,7 @@ Tests call `stockyard.cli.main(argv)` with a fake data source:
 5. `--no-cache` reaches the data layer.
 6. Finally `python -m stockyard` runs the CLI (the bot already moved in Phase 7).
 
-## Phase 9 — Packaging, deployment, docs
+## Phase 9 — Packaging, deployment, docs ✅
 
 1. Console scripts `stockyard`, `warren`; lock regenerated.
 2. Compose healthcheck fixed; CI per design §17.1; `.do/` per §17.2.
@@ -145,6 +145,7 @@ Tests call `stockyard.cli.main(argv)` with a fake data source:
    `CLAUDE.md` (architecture, commands; drop `!graham_value`/`!cr`), `DOCKER.md`, CHANGELOG, and
    `docs/agents.md` (how an agent calls the CLI and reads the JSON).
 4. Optional, one commit: `black` over the whole tree (pre-existing formatting drift).
+   (Not needed: the tree was already black-clean at the end of Phase 9.)
 
 ## Phase 10 — Release
 
