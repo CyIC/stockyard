@@ -11,7 +11,7 @@ from stockyard.data.fundamentals import AlignedFundamentals
 from stockyard.data.snapshot import StockData
 from stockyard.report_warning import ReportWarning
 from stockyard.research import definitions
-from stockyard.research.models import PastSalesResult
+from stockyard.research.models import PastEpsResult, PastSalesResult
 
 
 def _unavailable(section: str, figure: str, needed: int, available: int, unit: str) -> ReportWarning:
@@ -25,25 +25,48 @@ def _unavailable(section: str, figure: str, needed: int, available: int, unit: s
     )
 
 
+def _growth(section: str, years: tuple, unit: str, non_positive_code: str) -> dict:
+    """Pair-average increase and CAGR of ``years`` with a warning for each missing figure."""
+    values = [value for _, value in years]
+    warnings = []
+    cagr = None
+    if len(values) < 2:
+        warnings.append(_unavailable(section, "cagr", 2, len(values), unit))
+    else:
+        cagr = definitions.cagr(values[0], values[-1], len(values) - 1)
+        if cagr is None:
+            warnings.append(
+                ReportWarning(non_positive_code, f"cagr undefined: base year value {values[0]:,.2f}", section, "cagr")
+            )
+    recent = oldest = increase = None
+    if len(values) < 4:
+        warnings.append(_unavailable(section, "pair_increase", 4, len(values), unit))
+    else:
+        recent, oldest = mean(values[-2:]), mean(values[:2])
+        increase = definitions.pair_increase(values)
+        if increase is None:
+            warnings.append(
+                ReportWarning(non_positive_code, "pair_increase undefined: non-positive base", section, "pair_increase")
+            )
+    return {
+        "years": years,
+        "recent_pair_average": recent,
+        "oldest_pair_average": oldest,
+        "pair_increase": increase,
+        "cagr": cagr,
+        "warnings": tuple(warnings),
+    }
+
+
 def past_sales(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> PastSalesResult:
     """Past Sales Records: revenue per fiscal year, pair-average increase and CAGR."""
     del data, as_of  # revenue comes from the aligned fiscal years, already bounded by as_of
     years = tuple((year.fiscal_year, year.revenue) for year in fundamentals.years if year.revenue is not None)
-    revenue = [value for _, value in years]
-    warnings = []
-    cagr = definitions.cagr(revenue[0], revenue[-1], len(revenue) - 1) if len(revenue) >= 2 else None
-    if len(revenue) < 2:
-        warnings.append(_unavailable("past_sales", "cagr", 2, len(revenue), "fiscal years with revenue"))
-    if len(revenue) >= 4:
-        recent, oldest = mean(revenue[-2:]), mean(revenue[:2])
-    else:
-        recent = oldest = None
-        warnings.append(_unavailable("past_sales", "pair_increase", 4, len(revenue), "fiscal years with revenue"))
-    return PastSalesResult(
-        years=years,
-        recent_pair_average=recent,
-        oldest_pair_average=oldest,
-        pair_increase=definitions.pair_increase(revenue),
-        cagr=cagr,
-        warnings=tuple(warnings),
-    )
+    return PastSalesResult(**_growth("past_sales", years, "fiscal years with revenue", "figure_unavailable"))
+
+
+def past_eps(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> PastEpsResult:
+    """Past EPS: reported EPS per Complete Fiscal Year, pair-average increase and CAGR."""
+    del data, as_of
+    years = tuple((year.fiscal_year, year.reported_eps) for year in fundamentals.years if year.complete)
+    return PastEpsResult(**_growth("past_eps", years, "complete fiscal years", "non_positive_eps"))

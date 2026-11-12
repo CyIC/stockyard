@@ -2,7 +2,7 @@
 """Terminal/text rendering of section results (design §6)."""
 from stockyard.render import text
 from stockyard.report_warning import ReportWarning
-from stockyard.research.models import PastSalesResult
+from stockyard.research.models import PastEpsResult, PastSalesResult
 
 
 def _past_sales(**overrides):
@@ -52,3 +52,20 @@ def test_missing_figures_read_n_a_and_warnings_are_listed():
 
     assert "% increase in sales" in body and "n/a" in body
     assert "⚠ pair_increase needs 4 fiscal years with revenue; 2 available" in body
+
+
+def test_past_eps_shows_eps_per_share_with_cents():
+    result = PastEpsResult(
+        years=(("FY2024", 10.33), ("FY2025", 11.57)),
+        recent_pair_average=None,
+        oldest_pair_average=None,
+        pair_increase=None,
+        cagr=0.12,
+        warnings=(),
+    )
+    rendered = text.past_eps(result)
+
+    assert rendered.title == "Past EPS"
+    assert "FY2025" in rendered.body and "$11.57" in rendered.body
+    assert "% increase in earnings" in rendered.body
+    assert "Compound annual growth (FY2024→FY2025)" in rendered.body and "12.00%" in rendered.body

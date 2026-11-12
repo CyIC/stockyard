@@ -4,12 +4,22 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class PastSalesResult:
-    """Revenue per fiscal year (statement years with revenue) and its growth."""
+class GrowthRecord:
+    """A per-fiscal-year series and its growth: pair-average increase (4+ years) and CAGR (2+ years)."""
 
-    years: tuple  # ((fiscal_year, revenue), ...), oldest first
+    years: tuple  # ((fiscal_year, value), ...), oldest first
     recent_pair_average: float | None
     oldest_pair_average: float | None
     pair_increase: float | None
     cagr: float | None
     warnings: tuple
+
+
+@dataclass(frozen=True)
+class PastSalesResult(GrowthRecord):
+    """Revenue per fiscal year (statement years with revenue)."""
+
+
+@dataclass(frozen=True)
+class PastEpsResult(GrowthRecord):
+    """Reported EPS per Complete Fiscal Year."""

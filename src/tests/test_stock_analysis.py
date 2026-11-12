@@ -179,8 +179,6 @@ class StockAnalysisTestCase(unittest.TestCase):
         with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
             stock_analysis, "utils", utils_mock
         ), patch.object(
-            stock_analysis, "past_eps", MagicMock()
-        ), patch.object(
             stock_analysis, "record_of_stock", MagicMock(return_value=(["msg"], 5.0))
         ), patch.object(
             stock_analysis, "trend", MagicMock(return_value=("trend", []))

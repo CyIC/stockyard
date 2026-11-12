@@ -214,27 +214,6 @@ def test_earnings_growth_reports_positive_swing_out_of_a_loss():
 
 
 # --------------------------------------------------------------------------------------
-# past_eps
-# --------------------------------------------------------------------------------------
-def test_past_eps_compounds_growth_over_elapsed_periods():
-    """Same off-by-one as past_sales_records: 1.00 -> 3.00 over four periods is 31.61%/yr."""
-    earnings = pd.DataFrame({"reportedEPS": [1.00, 1.50, 2.00, 2.50, 3.00]}, index=_annual_index(5))
-
-    msg = stock_analysis.past_eps(earnings)
-
-    assert _pct(_field(msg, "Compound Annual rate of EPS")) == pytest.approx(3 ** (1 / 4) - 1, abs=1e-4)
-
-
-def test_past_eps_averages_the_outer_year_pairs():
-    earnings = pd.DataFrame({"reportedEPS": [1.00, 1.50, 2.00, 2.50, 3.00]}, index=_annual_index(5))
-
-    msg = stock_analysis.past_eps(earnings)
-
-    # (3.00 + 2.50)/2 against (1.50 + 1.00)/2
-    assert _pct(_field(msg, "% increase in earnings")) == pytest.approx((2.75 - 1.25) / 1.25, abs=1e-4)
-
-
-# --------------------------------------------------------------------------------------
 # _ttm_eps
 # --------------------------------------------------------------------------------------
 def _quarterly_eps_fixture(values):
@@ -326,7 +305,6 @@ def _run_with_mocked_sections(earnings, **section_mocks):
     utils_mock.send_message_in_chunks = AsyncMock()
 
     defaults = {
-        "past_eps": MagicMock(),
         "record_of_stock": MagicMock(return_value=(["msg"], 5.0)),
         "trend": MagicMock(return_value=("trend", [])),
         "cash_position": MagicMock(),
@@ -340,7 +318,7 @@ def _run_with_mocked_sections(earnings, **section_mocks):
         stock_analysis, "utils", utils_mock
     ), patch.multiple(stock_analysis, **defaults):
         asyncio.run(stock_analysis.run(message, "IBM"))
-    return defaults
+    return {**defaults, "message": message}
 
 
 def test_run_posts_past_sales_from_the_new_core(core_stub):
@@ -356,6 +334,20 @@ def test_run_posts_past_sales_from_the_new_core(core_stub):
     posted = [str(call.args[1]) for call in utils_mock.send_message_in_chunks.await_args_list]
     (past_sales_message,) = [m for m in posted if "Past Sales Records" in m]
     assert "FY2022" in past_sales_message and "FY2025" in past_sales_message
+
+
+def test_run_posts_past_eps_from_the_new_core(core_stub):
+    utils_mock = MagicMock()
+    earnings = {
+        "annualEarnings": pd.DataFrame({"reportedEPS": [2.0, 3.0]}, index=_annual_index(2)),
+        "quarterlyEarnings": _quarterly_eps_fixture([0.5, 0.6, 0.7, 0.8, 0.9]),
+    }
+    message = _run_with_mocked_sections(earnings, utils=utils_mock)["message"]
+
+    posted = [str(c.args[1]) for c in utils_mock.send_message_in_chunks.await_args_list]
+    posted += [str(c.args[0]) for c in message.channel.send.await_args_list if c.args]
+    (past_eps_message,) = [m for m in posted if "Past EPS" in m]
+    assert "FY2025" in past_eps_message
 
 
 @pytest.mark.usefixtures("core_stub")

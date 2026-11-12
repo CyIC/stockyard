@@ -58,66 +58,6 @@ def _ttm_eps(quarterly_earnings):
     return quarterly_earnings["reportedEPS"].iloc[-4:].sum()
 
 
-def _cagr(first, last, periods):
-    """Compound annual growth rate between the first and last observation.
-
-    :param first: <float> oldest observation
-    :param last: <float> newest observation
-    :param periods: <int> elapsed periods between them, i.e. one less than the row count
-    :return: growth rate as a fraction
-    """
-    return pow(last / first, 1 / periods) - 1
-
-
-def past_eps(earnings):
-    """Build Past EPS section of report.
-
-    :param earnings:
-    :return: <str> a message of the section to print
-    """
-    earnings = earnings[earnings.index >= datetime.datetime.now() - relativedelta(years=5)]
-    # Last year and year before EPS
-    recent_eps_mean = (earnings.iloc[-1] + earnings.iloc[-2]) / 2
-    # Years 4 and 5 EPS
-    past_eps_mean = (earnings.iloc[1] + earnings.iloc[0]) / 2
-    eps_increase = recent_eps_mean - past_eps_mean
-    eps_percent_increase = eps_increase / past_eps_mean
-    compound_annual_eps_growth_rate = _cagr(earnings.iloc[0], earnings.iloc[-1], len(earnings) - 1)
-    # display table
-    past_eps_record_table = PrettyTable()
-    past_eps_record_table.align = "l"
-    past_eps_record_table.align["Field 2"] = "r"
-    past_eps_record_table.header = False
-    past_eps_record_table.border = False
-    past_eps_record_table.add_row(["EPS for most recent year", f"{earnings.iloc[-1].round(4)[0]:10.4f} "])
-    past_eps_record_table.add_row(
-        [
-            "EPS for next most recent year",
-            f"{earnings.iloc[-2].round(4)[0]:10.4f} ",
-        ]
-    )
-    past_eps_record_table.add_row(
-        [
-            f"EPS for {YRS_LOOKBACK - 1} years ago",
-            f"{earnings.iloc[1].round(4)[0]:10.4f} ",
-        ]
-    )
-    past_eps_record_table.add_row(
-        [
-            f"EPS for {YRS_LOOKBACK} years ago",
-            f"{earnings.iloc[0].round(4)[0]:10.4f}",
-        ]
-    )
-    past_eps_record_table.add_row(["% increase in earnings", f"{eps_percent_increase.round(4)[0]:10.4%}"])
-    past_eps_record_table.add_row(
-        ["Compound Annual rate of EPS", f"{compound_annual_eps_growth_rate.round(4)[0]:10.4%}"]
-    )
-    msg = "\n__**Past EPS**__\n"
-    msg += f"*EPS per year*: ```{earnings}```"
-    msg += f"```{past_eps_record_table}```"
-    return msg
-
-
 def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
     """Build record of stock section of analysis.
 
@@ -987,7 +927,7 @@ async def run(message, ticker):
     await utils.send_message_in_chunks(
         message.channel, _discord(text.past_sales(sections.past_sales(data, fundamentals, as_of)))
     )
-    await message.channel.send(past_eps(earnings["annualEarnings"]))
+    await message.channel.send(_discord(text.past_eps(sections.past_eps(data, fundamentals, as_of))))
     msg, high_yield = record_of_stock(earnings, income_statement, daily_company_prices, monthly_company_prices)
     await utils.send_message_in_chunks(message.channel, msg)
     msg, charts = trend(income_statement, earnings, monthly_company_prices)

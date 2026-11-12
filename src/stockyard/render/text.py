@@ -2,7 +2,7 @@
 """Plain-text rendering of section results, shared by the CLI and (wrapped) Discord (design §6)."""
 from dataclasses import dataclass
 
-from stockyard.research.models import PastSalesResult
+from stockyard.research.models import PastEpsResult, PastSalesResult
 
 NA = "n/a"
 
@@ -32,10 +32,14 @@ def _warnings(warnings) -> list[str]:
     return [f"⚠ {warning.message}" for warning in warnings]
 
 
-def past_sales(result: PastSalesResult) -> RenderedSection:
-    """Past Sales Records: revenue by fiscal year, then the growth figures and the years they span."""
+def _per_share(value: float | None) -> str:
+    return NA if value is None else f"${value:,.2f}"
+
+
+def _growth(title: str, result, value_format, increase_label: str) -> RenderedSection:
+    """A per-fiscal-year series followed by its growth figures and the years they span."""
     labels = [fiscal_year for fiscal_year, _ in result.years]
-    lines = _rows([(fiscal_year, _money(revenue)) for fiscal_year, revenue in result.years])
+    lines = _rows([(fiscal_year, value_format(value)) for fiscal_year, value in result.years]) if labels else []
     if labels:
         lines.append("")
         span = f"{labels[0]}→{labels[-1]}"
@@ -43,11 +47,21 @@ def past_sales(result: PastSalesResult) -> RenderedSection:
         oldest = f"{labels[0]}–{labels[1]}" if len(labels) >= 2 else NA
         lines += _rows(
             [
-                (f"Recent two-year average ({recent})", _money(result.recent_pair_average)),
-                (f"Oldest two-year average ({oldest})", _money(result.oldest_pair_average)),
-                ("% increase in sales", _pct(result.pair_increase)),
+                (f"Recent two-year average ({recent})", value_format(result.recent_pair_average)),
+                (f"Oldest two-year average ({oldest})", value_format(result.oldest_pair_average)),
+                (increase_label, _pct(result.pair_increase)),
                 (f"Compound annual growth ({span})", _pct(result.cagr)),
             ]
         )
     lines += _warnings(result.warnings)
-    return RenderedSection("Past Sales Records", "\n".join(lines))
+    return RenderedSection(title, "\n".join(lines))
+
+
+def past_sales(result: PastSalesResult) -> RenderedSection:
+    """Past Sales Records: revenue by fiscal year and its growth."""
+    return _growth("Past Sales Records", result, _money, "% increase in sales")
+
+
+def past_eps(result: PastEpsResult) -> RenderedSection:
+    """Past EPS: reported EPS per share by Complete Fiscal Year and its growth."""
+    return _growth("Past EPS", result, _per_share, "% increase in earnings")
