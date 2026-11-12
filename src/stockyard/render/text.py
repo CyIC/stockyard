@@ -9,6 +9,7 @@ from stockyard.research.models import (
     PastSalesResult,
     RecordOfStockResult,
     RevenueGrowthResult,
+    RiskRewardResult,
     TrendResult,
 )
 
@@ -239,3 +240,47 @@ def trend(result: TrendResult) -> RenderedSection:
         )
     lines += _warnings(result.warnings)
     return RenderedSection("Trends", "\n".join(lines))
+
+
+LOW_LABELS = {
+    "linear_regression": "Linear regression of lows",
+    "average_low": "Average of fiscal-year lows",
+    "severe_low": "Severe low (5 years)",
+    "dividend_support": "Dividend support",
+}
+
+
+def _band(band) -> str:
+    return f"{_per_share(band[0])}–{_per_share(band[1])}"
+
+
+def risk_reward(result: RiskRewardResult) -> RenderedSection:
+    """Evaluating Risk & Reward: the forecast high, then each low estimate with zones and up/down ratio."""
+    lines = _rows(
+        [
+            ("Present price", _per_share(result.present_price)),
+            ("Average P/E at high", _number(result.average_pe_high)),
+            ("Projected EPS (TTM trend, 5 years)", _per_share(result.projected_eps)),
+            ("Forecast high (avg P/E × projected EPS)", _per_share(result.forecast_high)),
+            ("Price target appreciation", _pct(result.price_target_appreciation)),
+        ]
+    )
+    header = ["Low estimate", "Low", "Buy", "Maybe", "Sell", "Position", "Up/down"]
+    rows = []
+    for low in result.lows:
+        zones = low.zones
+        rows.append(
+            [
+                LOW_LABELS[low.name],
+                _per_share(low.value),
+                _band(zones.buy) if zones else NA,
+                _band(zones.maybe) if zones else NA,
+                _band(zones.sell) if zones else NA,
+                low.position or NA,
+                NA if low.up_down_ratio is None else f"{low.up_down_ratio:,.2f} to 1",
+            ]
+        )
+    if rows:
+        lines += [""] + _table(header, rows)
+    lines += _warnings(result.warnings)
+    return RenderedSection("Evaluating Risk & Reward", "\n".join(lines))

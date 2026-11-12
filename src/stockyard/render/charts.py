@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 from matplotlib.figure import Figure
 
-from stockyard.research.models import TrendResult
+from stockyard.research.models import RiskRewardResult, TrendResult
 
 
 def _series(points) -> pd.Series:
@@ -46,6 +46,35 @@ def trend(result: TrendResult, directory: Path) -> list[Path]:
         axis.legend()
         paths.append(_save(figure, directory / "trend_high_low.png"))
     return paths
+
+
+def risk_reward(result: RiskRewardResult, directory: Path) -> list[Path]:
+    """TTM EPS with its five-year projection, and monthly lows with their regression line."""
+    directory = Path(directory)
+    paths = []
+    for points, line, name, title, label in (
+        (result.eps_points, result.eps_forecast_line, "risk_eps_forecast.png", "TTM EPS projection", "TTM EPS"),
+        (result.monthly_lows, result.low_forecast_line, "risk_low_forecast.png", "Low price projection", "USD"),
+    ):
+        if not points:
+            continue
+        figure = Figure(figsize=(8, 4.5))
+        axis = figure.add_subplot()
+        axis.set_title(title)
+        axis.set_ylabel(label)
+        series = _series(points) if len(points[0][0]) > 7 else _monthly(points)
+        axis.plot(series, label="actual")
+        if line:
+            axis.plot(_series(line), linestyle="--", label="projection")
+        axis.legend()
+        paths.append(_save(figure, directory / name))
+    return paths
+
+
+def _monthly(points) -> pd.Series:
+    return pd.Series(
+        [value for _, value in points], index=pd.PeriodIndex([month for month, _ in points], freq="M").to_timestamp()
+    )
 
 
 def _save(figure: Figure, path: Path) -> Path:

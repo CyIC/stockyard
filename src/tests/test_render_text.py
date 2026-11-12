@@ -8,12 +8,15 @@ from stockyard.research.models import (
     CashPositionResult,
     CashRow,
     EarningsGrowthResult,
+    LowEstimate,
     PastEpsResult,
     PastSalesResult,
     RecordOfStockResult,
     RevenueGrowthResult,
+    RiskRewardResult,
     TrendResult,
 )
+from stockyard.research.definitions import Zones
 from stockyard.research.price_stats import PriceStatsRow
 
 
@@ -198,3 +201,21 @@ def test_trend_summarises_the_chart_data():
     assert "Quarterly revenue" in rendered.body and "2 quarters" in rendered.body and "$6,000,000,000" in rendered.body
     assert "Quarterly EPS" in rendered.body and "$1.10" in rendered.body
     assert "⚠ no monthly prices" in rendered.body
+
+
+def test_risk_reward_summary_and_low_estimate_table():
+    zones = Zones(buy=(25.0, 31.25), maybe=(31.25, 43.75), sell=(43.75, 50.0))
+    lows = (
+        LowEstimate("linear_regression", 60.0, None, None, None),
+        LowEstimate("average_low", 25.0, zones, "maybe", 1.5),
+    )
+    result = RiskRewardResult(35.0, 12.5, 4.0, 50.0, 50 / 35 - 1, lows, (), (), (), (), ())
+    rendered = text.risk_reward(result)
+    body = rendered.body
+
+    assert rendered.title == "Evaluating Risk & Reward"
+    assert "Forecast high (avg P/E × projected EPS)" in body and "$50.00" in body
+    assert "Price target appreciation" in body and "42.86%" in body
+    assert "Linear regression of lows" in body
+    average_line = next(line for line in body.splitlines() if line.startswith("Average of fiscal-year lows"))
+    assert "$25.00–$31.25" in average_line and "maybe" in average_line and "1.50 to 1" in average_line
