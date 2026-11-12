@@ -96,7 +96,12 @@ high, `range_inverted` when a low ≥ forecast high, and price position `below_r
 `build_report` gathers sections and warnings; `history` block; a raising section becomes `null` +
 `section_failed` without affecting others.
 
-## Phase 6 — Renderers
+## Phase 6 — Renderers ✅
+
+`6b68b3a` JSON (key sets pinned) · `2f448c3` Discord · charts done in phase 4 (`2c510a7`) · legacy modules
+removed. Coverage 98 %.
+
+### Original plan
 
 1. **JSON:** envelope, `null` for missing/NaN/±∞, error envelope; **key-set snapshot per section**.
 2. **Discord:** wraps text renderers; chunks ≤ 2000 characters.

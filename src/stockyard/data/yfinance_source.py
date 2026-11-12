@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""yfinance field mapping shared by the data layer and the legacy report code."""
+"""yfinance statement labels mapped to the canonical column names the data layer uses."""
 import numpy as np
 import pandas as pd
 
