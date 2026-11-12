@@ -11,11 +11,14 @@ from tests.builders import daily_bars, quarterly_eps, stock_data
 from tests.fixture_replay import load_stock_data
 
 AS_OF = datetime.date(2026, 11, 11)
-QUARTERS = [f"{y}-{md}" for y in (2024, 2025) for md in ("03-31", "06-30", "09-30", "12-31")]
+QUARTERS = [f"{y}-{md}" for y in (2022, 2023, 2024, 2025) for md in ("03-31", "06-30", "09-30", "12-31")]
 
 
 def _company(present_close=35.0, quarter_eps=None):
-    """FY2024 high 40 / low 20, FY2025 high 60 / low 30, EPS 4.00 each year, $1 dividend a year."""
+    """Four complete fiscal years (D19), EPS 4.00 each, $1 dividend a year.
+
+    Prices start late 2023, so only FY2024 (high 40 / low 20) and FY2025 (high 60 / low 30) have price figures.
+    """
     bars = daily_bars(
         {
             "2023-12-29": {},
@@ -32,7 +35,8 @@ def _company(present_close=35.0, quarter_eps=None):
     eps = quarterly_eps(QUARTERS) + [("2026-04-25", 1.0), ("2026-07-25", 1.0), ("2026-10-25", 1.0)]
     if quarter_eps is not None:
         eps = [(day, value) for (day, _), value in zip(eps, quarter_eps)]
-    return stock_data(annual={"2024-12-31": (100, 10), "2025-12-31": (110, 11)}, eps=eps, daily=bars)
+    annual = {"2022-12-31": (90, 9), "2023-12-31": (95, 9), "2024-12-31": (100, 10), "2025-12-31": (110, 11)}
+    return stock_data(annual=annual, eps=eps, daily=bars)
 
 
 def _section(data):
@@ -86,7 +90,7 @@ def test_linear_regression_low_projects_the_trend_of_daily_lows_five_years_ahead
 
 
 def test_a_falling_earnings_trend_quotes_no_forecast_and_no_zones():
-    falling = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0]
+    falling = [3.6 - 0.2 * i for i in range(19)]  # positive fiscal years, TTM trend heading below zero
     result = _section(_company(quarter_eps=falling))
 
     assert result.forecast_high is None and result.price_target_appreciation is None
@@ -104,7 +108,7 @@ def test_a_price_above_the_forecast_high_is_above_range_without_a_ratio():
 
 def test_too_few_quarters_for_a_trend_says_how_many():
     data = stock_data(
-        annual={"2025-12-31": (110, 11)}, eps=quarterly_eps(QUARTERS[4:]), prices=("2024-12-02", "2026-11-11")
+        annual={"2025-12-31": (110, 11)}, eps=quarterly_eps(QUARTERS[-4:]), prices=("2024-12-02", "2026-11-11")
     )
     result = _section(data)
 
@@ -119,3 +123,15 @@ def test_msft_recorded_forecast_is_consistent():
     assert result.forecast_high == pytest.approx(result.average_pe_high * result.projected_eps)
     average = _low(result, "average_low")
     assert average.zones.buy[1] == pytest.approx(average.value + (result.forecast_high - average.value) / 4)
+
+
+def test_no_forecast_without_four_complete_fiscal_years_but_lows_still_shown():
+    """D19: an IPO's short, distorted EPS trend must not produce a price target."""
+    data, as_of = load_stock_data("RDDT")
+    result = risk_reward(data, aligned_annual_fundamentals(data, as_of), as_of)
+
+    assert result.forecast_high is None and result.price_target_appreciation is None
+    assert all(low.zones is None for low in result.lows)
+    assert _low(result, "average_low").value is not None
+    (warning,) = [w for w in result.warnings if w.figure == "forecast_high"]
+    assert (warning.needed, warning.available) == (4, 2)

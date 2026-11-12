@@ -11,7 +11,7 @@ from statistics import mean
 import numpy as np
 import pandas as pd
 
-from stockyard.data.fundamentals import AlignedFundamentals
+from stockyard.data.fundamentals import YRS_LOOKBACK, AlignedFundamentals
 from stockyard.data.snapshot import StockData
 from stockyard.report_warning import ReportWarning
 from stockyard.research import definitions
@@ -455,7 +455,10 @@ def risk_reward(data: StockData, fundamentals: AlignedFundamentals, as_of: datet
     average_pe_high = _mean_of(row.pe_high for row in rows)
     projected, eps_points, eps_line = _ttm_trend(data, as_of, horizon, warnings)
     forecast = None
-    if projected is not None and average_pe_high is not None and projected > 0:
+    if not fundamentals.sufficient_history:  # D19: no price target from a short (e.g. IPO) history
+        complete = fundamentals.history["complete_fiscal_years"]
+        warnings.append(_unavailable(section, "forecast_high", YRS_LOOKBACK, complete, "complete fiscal years"))
+    elif projected is not None and average_pe_high is not None and projected > 0:
         forecast = average_pe_high * projected
     else:
         reason = (
