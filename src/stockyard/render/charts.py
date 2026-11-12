@@ -23,7 +23,7 @@ def trend(result: TrendResult, directory: Path) -> list[Path]:
     paths = []
     if result.quarterly_revenue or result.quarterly_eps:
         figure = Figure(figsize=(8, 4.5))
-        revenue_axis = figure.subplots()
+        revenue_axis = figure.add_subplot()
         revenue_axis.set_title("Revenue & EPS")
         revenue_axis.set_xlabel("Date")
         revenue_axis.set_ylabel("Revenue", color="tab:red")
@@ -37,7 +37,7 @@ def trend(result: TrendResult, directory: Path) -> list[Path]:
     if result.monthly_prices:
         months = pd.PeriodIndex([row[0] for row in result.monthly_prices], freq="M").to_timestamp()
         figure = Figure(figsize=(8, 4.5))
-        axis = figure.subplots()
+        axis = figure.add_subplot()
         axis.set_title("Stock High & Low")
         axis.set_xlabel("Date")
         axis.set_ylabel("USD")

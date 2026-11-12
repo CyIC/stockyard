@@ -234,7 +234,8 @@ def trend(result: TrendResult) -> RenderedSection:
     if result.monthly_prices:
         month, high, low, _, _ = result.monthly_prices[-1]
         lines.append(
-            f"Monthly prices: {len(result.monthly_prices)} months; {month} high {_per_share(high)}, low {_per_share(low)}"
+            f"Monthly prices: {len(result.monthly_prices)} months; "
+            f"{month} high {_per_share(high)}, low {_per_share(low)}"
         )
     lines += _warnings(result.warnings)
     return RenderedSection("Trends", "\n".join(lines))
