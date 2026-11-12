@@ -91,7 +91,7 @@ Section-specific: `revenue_growth` reports dividends per share, yield and `lynch
 corrected "Forecast high (avg PE × projected EPS)" label, `null` up/down when price ≤ low or ≥ forecast
 high, `range_inverted` when a low ≥ forecast high, and price position `below_range`/`above_range`.
 
-## Phase 5 — Report
+## Phase 5 — Report ✅
 
 `build_report` gathers sections and warnings; `history` block; a raising section becomes `null` +
 `section_failed` without affecting others.
