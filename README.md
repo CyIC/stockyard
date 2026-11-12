@@ -15,7 +15,7 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![Apache License][license-shield]][license-url]
-[![Python: 3.11][python-shield]][python-url]
+[![Python: 3.13][python-shield]][python-url]
 [![OSS Lifecycle][oss-shield]][oss-url]
 
 <!-- PROJECT LOGO -->
@@ -25,16 +25,14 @@
         <img src="images/logo.png" alt="Logo" width="80" height="80">
     </a>
 
-<h3 align="center">Warren Chatbot</h3>
+<h3 align="center">Stockyard</h3>
 
   <p align="center">
-    An Investment Club chatbot
+    Stock Selection Guide research for the Cypress Investment Club, from the command line or Discord
     <br />
-    <a href="https://github.com/github_username/repo_name"><strong>Explore the docs »</strong></a>
+    <a href="docs/design/v1.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/github_username/repo_name">View Demo</a>
-    ·
     <a href="https://github.com/CyIC/stockyard/issues">Report Bug</a>
     ·
     <a href="https://github.com/CyIC/stockyard/issues">Request Feature</a>
@@ -59,7 +57,14 @@
         <li><a href="#installation">Installation</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
+    <li>
+      <a href="#usage">Usage</a>
+      <ul>
+        <li><a href="#command-line">Command line</a></li>
+        <li><a href="#discord-warren">Discord (Warren)</a></li>
+      </ul>
+    </li>
+    <li><a href="#calculation-notes">Calculation Notes</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
@@ -72,26 +77,31 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+Stockyard builds the sections of a BetterInvesting-style **Stock Selection Guide** (SSG) for any ticker
+from Yahoo Finance data: past sales and EPS, the record of stock prices, P/E, payout and yield, trends,
+cash position, revenue and earnings growth, and the risk/reward evaluation with buy/maybe/sell zones.
 
-Warren is a chatbot for investment clubs to analyze stocks, report on club fundamentals and more.
+One core library, two front ends:
+* **`stockyard`**, a command-line tool for quick lookups in a terminal and for automation. `--json` gives
+  AI agents and scripts a versioned, machine-readable report without spending LLM tokens on scraping.
+  See [docs/agents.md](docs/agents.md).
+* **Warren**, the club's Discord bot, which posts the same report and charts in a channel.
 
-With Warren, you can:
-* Conduct 5 year stock return analysis on publically traded companies.
-* Track and report on club portfolio performance.
+Every figure is computed for fiscal years aligned on the company's own period-ends, as of a stated New York
+date. Missing data never becomes a silent zero or a crash: the figure is `null` (`n/a` in text) with a
+warning saying what was needed.
+
+Stockyard is research and education for the club, not investment advice.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
 
-* [Python3.11](https://www.python.org/downloads/release/python-3110/)
-* [Pandas](https://pandas.pydata.org/)
-* [NumPy](https://numpy.org/)
-* [PrettyTables](https://github.com/jazzband/prettytable)
-* [requests](https://docs.python-requests.org/en/latest/index.html)
+* [Python 3.13](https://www.python.org/)
+* [yfinance](https://github.com/ranaroussi/yfinance)
+* [pandas](https://pandas.pydata.org/) and [NumPy](https://numpy.org/)
 * [matplotlib](https://matplotlib.org/)
-* [mplfinance](https://github.com/matplotlib/mplfinance)
-* [Discord.py][discordpy-url]
+* [discord.py][discordpy-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -112,6 +122,7 @@ With Warren, you can:
 |   |   ├-- research/             # Stock Selection Guide definitions, sections and build_report
 |   |   ├-- render/               # text, Discord, JSON and chart renderers
 |   |   ├-- bot/                  # Warren, the Discord bot (console script `warren`)
+|   |   ├-- cli.py                # the command line (console script `stockyard`)
 |   |   ├-- clock.py              # the single wall-clock read (New York date)
 |   |   ├-- config.py             # settings from environment variables
 |   |   ├-- logging_config.py     # logging to stderr
@@ -138,9 +149,9 @@ instructions.
 
 ### Prerequisites 
 
-This bot is run off of a Digital Ocean droplet and constantly monitors a single Discord server. In order to run this bot
-locally, you will need [Python][python-url] and [Poetry][poetry-url] installed. All other dependencies are installed 
-using poetry.
+You need [Python][python-url] 3.13 and [Poetry][poetry-url]; Poetry installs everything else. The CLI needs nothing
+more. Warren also needs a Discord bot token. In production Warren runs in a container, self-hosted with Docker
+Compose or on DigitalOcean App Platform (`.do/`); see [DOCKER.md](./DOCKER.md).
 
 ### Installation
 
@@ -186,9 +197,115 @@ a local `bot_config.ini`; if none is found it exits with a message saying so. Th
 
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+### Command line
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+```sh
+stockyard report MSFT                 # every section, as text
+stockyard past-eps MSFT               # one section
+stockyard report MSFT --json          # stockyard.report/1 JSON for scripts and agents
+stockyard trend MSFT --charts charts/ # also write PNG charts into charts/
+stockyard --help
+```
+
+Run it as `poetry run stockyard ...` or `python -m stockyard ...` if the script isn't on your PATH.
+
+| Command | Section |
+|---|---|
+| `report` | all of the below |
+| `fundamentals` | aligned fiscal years: revenue, net income, reported EPS; current-year progress |
+| `past-sales` | past sales records, growth and CAGR |
+| `past-eps` | past EPS, growth and CAGR |
+| `record` | record of stock: fiscal-year high/low, P/E at high and low, payout, high yield |
+| `trend` | quarterly revenue and EPS, monthly high/low prices |
+| `cash` | cash position: cash, debt and working capital, two fiscal years and the latest quarter |
+| `revenue-growth` | revenue growth, dividends, current P/E and Lynch's dividend-adjusted ratio |
+| `earnings-growth` | net income year over year |
+| `risk-reward` | forecast high, low estimates, zones, up/down ratios and price target |
+
+Options for every command: `--json`, `--charts DIR` (writes `trend_*.png` / `risk_*.png` for the sections that
+have charts), `--no-cache` (skip the same-day cache), `-v` (debug logging on stderr).
+
+Only the result is written to stdout; logs and errors go to stderr. Exit codes: `0` success (warnings may be
+present), `1` internal error, `2` usage error or invalid ticker, `3` no data for the ticker, `4` Yahoo Finance
+failed. The JSON contract is described in [docs/agents.md](docs/agents.md).
+
+Example (`stockyard past-eps IBM`, recorded data):
+
+```
+IBM — Stock Selection Guide as of 2026-11-11 (yfinance)
+
+== Past EPS ==
+FY2021                 $9.97
+FY2022                 $9.12
+FY2023                 $9.61
+FY2024                $10.33
+FY2025                $11.57
+
+Recent two-year average (FY2024–FY2025)                $10.95
+Oldest two-year average (FY2021–FY2022)                 $9.55
+% increase in earnings                                 14.72%
+Compound annual growth (FY2021→FY2025)                  3.79%
+```
+
+### Discord (Warren)
+
+```sh
+poetry run warren        # or: python -m stockyard.bot
+```
+
+| Command | What it does |
+|---|---|
+| `!stock_report TICKER` (or `!sr TICKER`) | posts the full report with trend and risk/reward charts |
+| `!help` | lists the commands |
+
+Warren builds the report off Discord's event loop, so one slow lookup doesn't stall the bot.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Calculation Notes
+
+The full definitions, minimums and edge cases are in [design §5.2, §5.6 and §5.7](docs/design/v1.md); terms
+are in [CONTEXT.md](./CONTEXT.md). In brief:
+
+**Fiscal years.** Rows are the company's annual statement period-ends, labelled `FY####`. Quarterly EPS
+announcements are attributed to the quarter they report, and a year whose four quarters are all present is
+a *Complete Fiscal Year*. EPS-based figures use complete years only; revenue and income use every annual
+statement. Each year's prices come from its own window, the trading days after the prior period-end up to
+its own. With fewer than 4 complete fiscal years (recent IPOs) the history is *insufficient*: the EPS
+growth figures that need more years and the risk/reward forecast are `n/a`, with warnings saying why.
+
+| Figure | How it is calculated |
+|---|---|
+| CAGR | `(last / first)^(1/(n−1)) − 1` over n years; `n/a` if the first year is ≤ 0 or the last is < 0 |
+| % increase (pair) | average of the two most recent years versus the two oldest years |
+| TTM EPS | sum of the last four reported quarterly EPS |
+| Current P/E | present price ÷ TTM EPS; `n/a` if TTM EPS ≤ 0 |
+| P/E at high / low | fiscal-year high ÷ that year's EPS, fiscal-year low ÷ EPS; years with EPS ≤ 0 are left out of the averages |
+| % payout, high yield | dividends per share ÷ EPS; dividends per share ÷ fiscal-year low |
+| Dividends per share | the dividends actually paid per share in the period, from the price history (fiscal-year window, or the last 365 days for TTM) |
+| Dividend yield | TTM dividends per share ÷ present price |
+| Forecast high | average P/E at high × TTM EPS projected five years ahead by a straight-line fit. Labelled "Forecast high (avg PE × projected EPS)". |
+| Low estimates | four, each shown on its own: the five-year straight-line trend of daily lows; the average of fiscal-year lows; the lowest daily low in five years; and dividend support (TTM dividends ÷ highest fiscal-year high yield) |
+| Zones | the range from a low estimate to the forecast high, split **25 % buy / 50 % maybe / 25 % sell**; the present price is placed in one of them |
+| Up/down ratio | `(forecast high − price) ÷ (price − low)`; the top of the buy zone is 3 to 1 |
+| Price target | forecast high ÷ present price − 1 |
+| Cash position | total cash = cash + short-term investments; net cash = total cash − long-term debt; working capital = current assets − current liabilities. Items Yahoo omits (often a company with no debt) count as zero, with a warning. |
+
+**Lynch's dividend-adjusted ratio.** The Revenue Growth section reports **Peter Lynch's dividend-adjusted
+PEG ratio**, from *One Up on Wall Street* (1989):
+
+```
+(EPS growth % + dividend yield %) ÷ current P/E
+```
+
+with both percentages as whole numbers and EPS growth taken as the EPS CAGR. For example, 12 % growth, a 2 %
+yield and a P/E of 20 give (12 + 2) ÷ 20 = 0.7. Lynch's reading: below 1 is poor, 1.5 is okay, and 2 or more is
+what you're looking for. It appears in the Revenue Growth section of the text and Discord reports (labelled
+"Lynch dividend-adjusted ratio") and as `lynch_ratio` in the JSON. It replaces the 0.1 formula, which mixed
+units.
+
+All prices are split-adjusted but not dividend-adjusted, so historical highs and lows match what was quoted
+at the time, apart from splits.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -231,8 +348,7 @@ This project uses libraries and software listed in the [Built With](README.md#bu
 [issues-shield]: https://img.shields.io/github/issues/CyIC/stockyard.svg?style=for-the-badge
 [issues-url]: https://github.com/CyIC/stockyard/issues
 [license-shield]: https://img.shields.io/github/license/CyIC/stockyard.svg?style=for-the-badge
-[license-url]: https://github.com/CyIC/stockyard/blob/master/LICENSE.md
-[product-screenshot]: images/screenshot.png
+[license-url]: https://github.com/CyIC/stockyard/blob/main/LICENSE.md
 [lint-flake8-shield]: https://img.shields.io/badge/linting-flake8-yellowgreen?style=for-the-badge
 [flake8-url]: https://flake8.pycqa.org/en/latest/
 [discordpy-url]: https://discordpy.readthedocs.io/en/stable/

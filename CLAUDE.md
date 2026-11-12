@@ -92,7 +92,7 @@ these. Never decide on your own that "this case is different."
 
 Stockyard is the Cypress Investment Club's stock research library. It produces the BetterInvesting Stock Selection
 Guide (SSG) analysis for a ticker as structured results, and delivers them through front ends: **Warren**, the
-Discord bot, and (v1.0, in progress) the `stockyard` CLI for humans and AI agents; an MCP server follows in v1.1.
+Discord bot, and the `stockyard` CLI for humans and AI agents (`docs/agents.md`); an MCP server follows in v1.1.
 Warren is the persona; the code is named for Stockyard (ADR-0005).
 
 Read before changing behaviour: `docs/design/v1.md` (design and decision log), `docs/design/v1-plan.md` (phased
@@ -110,6 +110,8 @@ plan), `docs/adr/` (decisions), `CONTEXT.md` (glossary; its terms win).
 - **src/stockyard/render/** - `text.py`, `discord.py` (2000-character messages), `json.py`
   (`stockyard.report/1`), `charts.py` (matplotlib OO `Figure` API only, thread-safe)
 - **src/stockyard/bot/** - Warren: command parsing, `!sr` built off the event loop
+- **src/stockyard/cli.py** - the `stockyard` command: one subcommand per section, text or `--json`, exit codes 0-4
+  (ADR-0003); only the result on stdout
 - `clock.py` (the only wall-clock read), `config.py`, `logging_config.py` (stderr), `report_warning.py`,
   `utilities.py`
 
@@ -132,6 +134,7 @@ poetry run black src/
 poetry run flake8 src/stockyard
 poetry run pylint src/stockyard
 poetry run python scripts/record_raw_fixtures.py IBM  # re-record fixtures (needs Yahoo Finance access)
+poetry run stockyard report MSFT --json              # the CLI (or: python -m stockyard)
 poetry run warren                                     # run the Discord bot (or: python -m stockyard.bot)
 bump-my-version patch|minor|major                     # version management
 ```
