@@ -8,6 +8,8 @@ import datetime
 import math
 from statistics import mean
 
+import pandas as pd
+
 from stockyard.data.fundamentals import AlignedFundamentals
 from stockyard.data.snapshot import StockData
 from stockyard.report_warning import ReportWarning
@@ -21,6 +23,7 @@ from stockyard.research.models import (
     PastSalesResult,
     RecordOfStockResult,
     RevenueGrowthResult,
+    TrendResult,
 )
 
 
@@ -329,3 +332,52 @@ def record_of_stock(data: StockData, fundamentals: AlignedFundamentals, as_of: d
         change_from_oldest_high=definitions.appreciation(price, oldest.high) if oldest and price is not None else None,
         warnings=tuple(warnings),
     )
+
+
+TREND_YEARS = 5
+
+
+def _within(frame, as_of: datetime.date):
+    """Rows in the five years up to and including as_of."""
+    if frame.empty:
+        return frame
+    start = as_of - pd.DateOffset(years=TREND_YEARS)
+    return frame[(frame.index > start) & (frame.index.date <= as_of)]
+
+
+def _column(frame, name: str) -> pd.Series:
+    """One column without missing values; an empty Series when the frame is empty."""
+    return frame[name].dropna() if not frame.empty else pd.Series(dtype=float)
+
+
+def trend(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> TrendResult:
+    """Trend: quarterly revenue and EPS, monthly highs and lows with 4-month averages (chart data)."""
+    del fundamentals
+    revenue = _column(_within(data.income_quarterly, as_of), "totalRevenue")
+    eps = _column(_within(data.earnings, as_of), "reported_eps")
+    prices = _within(data.daily_prices, as_of)
+    monthly = []
+    if not prices.empty:
+        grouped = prices.groupby(prices.index.to_period("M")).agg({"high": "max", "low": "min"})
+        avg_high, avg_low = grouped["high"].rolling(4).mean(), grouped["low"].rolling(4).mean()
+        for month, row in grouped.iterrows():
+            monthly.append(
+                (
+                    str(month),
+                    float(row["high"]),
+                    float(row["low"]),
+                    None if pd.isna(avg_high[month]) else float(avg_high[month]),
+                    None if pd.isna(avg_low[month]) else float(avg_low[month]),
+                )
+            )
+    series = {
+        "quarterly_revenue": tuple((day.date().isoformat(), float(value)) for day, value in revenue.items()),
+        "quarterly_eps": tuple((day.date().isoformat(), float(value)) for day, value in eps.items()),
+        "monthly_prices": tuple(monthly),
+    }
+    warnings = tuple(
+        ReportWarning("figure_unavailable", f"no {name.replace('_', ' ')} in the five years to {as_of}", "trend", name)
+        for name, values in series.items()
+        if not values
+    )
+    return TrendResult(**series, warnings=warnings)

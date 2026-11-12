@@ -49,22 +49,6 @@ def _load_prices(dataset):
 class StockAnalysisTestCase(unittest.TestCase):
     """Test Stock Analysis methods."""
 
-    def test_trend(self):
-        """Test successfull execution of trend method."""
-        # GIVEN
-        income_statement = _load_reports("income_statement")
-        monthly_prices = _load_prices("monthly_prices")
-        eps = _load_earnings()
-
-        # WHEN
-        msg, files = stock_analysis.trend(income_statement, eps, monthly_prices)
-
-        # THEN
-        self.assertIsInstance(msg, str)
-        self.assertIsInstance(files, list)
-        for file in files:
-            self.assertIsInstance(file, str)
-
     def test_risk_reward(self):
         """Test cash position risk_reward module."""
         # GIVEN
@@ -128,8 +112,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
             stock_analysis, "utils", utils_mock
 
-        ), patch.object(
-            stock_analysis, "trend", MagicMock(return_value=("trend", []))
+
 
 
 

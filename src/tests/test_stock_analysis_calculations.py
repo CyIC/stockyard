@@ -169,14 +169,15 @@ def _run_with_mocked_sections(earnings, **section_mocks):
     utils_mock.send_message_in_chunks = AsyncMock()
 
     defaults = {
-        "trend": MagicMock(return_value=("trend", [])),
         "risk_reward": MagicMock(return_value=("risk_reward", [])),
     }
     defaults.update(section_mocks)
 
-    with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
-        stock_analysis, "utils", utils_mock
-    ), patch.multiple(stock_analysis, **defaults):
+    with (
+        patch.object(stock_analysis, "yf_api", yf_mock),
+        patch.object(stock_analysis, "utils", utils_mock),
+        patch.multiple(stock_analysis, **defaults),
+    ):
         asyncio.run(stock_analysis.run(message, "IBM"))
     return {**defaults, "message": message}
 
@@ -208,6 +209,17 @@ def test_run_posts_past_eps_from_the_new_core(core_stub):
     posted += [str(c.args[0]) for c in message.channel.send.await_args_list if c.args]
     (past_eps_message,) = [m for m in posted if "Past EPS" in m]
     assert "FY2025" in past_eps_message
+
+
+def test_run_posts_trend_charts_from_a_per_request_directory(core_stub):
+    earnings = {
+        "annualEarnings": pd.DataFrame({"reportedEPS": [2.0, 3.0]}, index=_annual_index(2)),
+        "quarterlyEarnings": _quarterly_eps_fixture([0.5, 0.6, 0.7, 0.8, 0.9]),
+    }
+    message = _run_with_mocked_sections(earnings)["message"]
+
+    files = [c.kwargs["file"].filename for c in message.channel.send.await_args_list if "file" in c.kwargs]
+    assert "trend_high_low.png" in files and "trend_revenue_eps.png" in files
 
 
 # --------------------------------------------------------------------------------------

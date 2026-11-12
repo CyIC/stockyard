@@ -3,6 +3,8 @@
 """Stock Analysis functions for chatbot."""
 import datetime
 import logging
+import tempfile
+from pathlib import Path
 
 import discord
 import matplotlib.pyplot as plt
@@ -14,7 +16,7 @@ from stockyard import utilities as utils
 from stockyard.clock import new_york_today
 from stockyard.data.fundamentals import aligned_annual_fundamentals
 from stockyard.data.snapshot import fetch_stock_data
-from stockyard.render import text
+from stockyard.render import charts, text
 from stockyard.research import sections
 from stockyard import yfinance_integration as yf_api
 
@@ -24,55 +26,6 @@ logger.setLevel(logging.DEBUG)
 
 float_formatter = "{:0.2f}".format
 np.set_printoptions(formatter={"float_kind": float_formatter})
-
-
-def trend(
-    income_statement: pd.DataFrame,
-    eps: pd.DataFrame,
-    monthly_company_prices: pd.DataFrame,
-):
-    """Build Trend section of analysis.
-
-    :param income_statement: <pandas.DatFrame>
-    :param eps: <pandas.DatFrame>
-    :param monthly_company_prices: <pandas.DatFrame>
-    :return: <tuple> (<str> a message of the section to print, <list> of chart figure file names)
-    """
-    msg = "\n__**Trends**__"
-    files = []
-    quarterly_revenue = income_statement["quarterlyReports"]
-    quarterly_revenue = quarterly_revenue["totalRevenue"]
-    quarterly_revenue = quarterly_revenue[quarterly_revenue.index >= datetime.datetime.now() - relativedelta(years=5)]
-    quarterly_eps = eps["quarterlyEarnings"]
-    quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=5)]
-    # Quarterly Revenue
-    fig1, revenue_fig = plt.subplots()  # pylint: disable=W0612
-    revenue_fig.set_xlabel("Date")
-    revenue_fig.set_ylabel("Revenue", color="tab:red")
-    revenue_fig.plot(quarterly_revenue, color="tab:red")
-    revenue_fig.set_title("Revenue & EPS")
-    # Quarterly EPS
-    eps_fig = revenue_fig.twinx()
-    eps_fig.set_ylabel("EPS", color="tab:blue")
-    eps_fig.plot(quarterly_eps["reportedEPS"])
-    # Price high/low
-    eps_fig_path = utils.data_path("eps_fig.jpg")
-    plt.savefig(eps_fig_path)
-    files.append(eps_fig_path)
-
-    # Plot Stock Highs and Lows
-    monthly_company_prices["avg_high"] = monthly_company_prices["high"].rolling(4).mean()
-    monthly_company_prices["avg_low"] = monthly_company_prices["low"].rolling(4).mean()
-    monthly_company_prices.plot(
-        y=["high", "low", "avg_high", "avg_low"],
-        title="Stock High & Low",
-        xlabel="Date",
-        ylabel="USD",
-    )
-    stock_high_low_path = utils.data_path("stock_high_low.jpg")
-    plt.savefig(stock_high_low_path)
-    files.append(stock_high_low_path)
-    return msg, files
 
 
 def predict_low(high: float, low: float, current_price: float):
@@ -374,12 +327,12 @@ async def run(message, ticker):
     await utils.send_message_in_chunks(message.channel, _discord(text.record_of_stock(record)))
     # Bridge until risk_reward migrates: legacy risk_reward wants the peak high yield in percent units
     high_yield = max((row.high_yield for row in record.rows if row.high_yield is not None), default=0.0) * 100
-    msg, charts = trend(income_statement, earnings, monthly_company_prices)
-    await message.channel.send(msg)
-    for fig in charts:
-        with open(fig, "rb") as fh:
-            f = discord.File(fh, filename=fig)
-            await message.channel.send(file=f)
+    trend_result = sections.trend(data, fundamentals, as_of)
+    await message.channel.send(_discord(text.trend(trend_result)))
+    with tempfile.TemporaryDirectory() as chart_dir:  # per request: concurrent reports never share files
+        for path in charts.trend(trend_result, Path(chart_dir)):
+            with open(path, "rb") as fh:
+                await message.channel.send(file=discord.File(fh, filename=path.name))
     await utils.send_message_in_chunks(
         message.channel, _discord(text.cash_position(sections.cash_position(data, fundamentals, as_of)))
     )
@@ -387,7 +340,7 @@ async def run(message, ticker):
     await message.channel.send(_discord(text.earnings_growth(sections.earnings_growth(data, fundamentals, as_of))))
     # TODO management
     # Risk Reward
-    msg, charts = risk_reward(
+    msg, risk_charts = risk_reward(
         daily_company_prices,
         earnings,
         monthly_company_prices,
@@ -395,7 +348,7 @@ async def run(message, ticker):
         high_yield,  # high yield from EPS chart
     )
     await message.channel.send(msg)
-    for fig in charts:
+    for fig in risk_charts:
         with open(fig, "rb") as fh:
             f = discord.File(fh, filename=fig)
             await message.channel.send(file=f)

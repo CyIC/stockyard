@@ -90,3 +90,13 @@ class RecordOfStockResult:  # pylint: disable=too-many-instance-attributes
     oldest_fiscal_year: str | None
     change_from_oldest_high: float | None
     warnings: tuple
+
+
+@dataclass(frozen=True)
+class TrendResult:
+    """Chart data within five years of as_of; dates are ISO strings, months "YYYY-MM"."""
+
+    quarterly_revenue: tuple  # ((quarter_end, revenue), ...)
+    quarterly_eps: tuple  # ((announced, reported_eps), ...)
+    monthly_prices: tuple  # ((month, high, low, avg_high_4m, avg_low_4m), ...)
+    warnings: tuple

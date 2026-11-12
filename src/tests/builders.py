@@ -20,7 +20,14 @@ def _sheet(rows) -> pd.DataFrame:
 
 
 def stock_data(  # pylint: disable=too-many-arguments
-    annual=None, eps=None, prices=None, ticker="TEST", daily=None, balance=None, balance_quarterly=None
+    annual=None,
+    eps=None,
+    prices=None,
+    ticker="TEST",
+    daily=None,
+    balance=None,
+    balance_quarterly=None,
+    quarterly=None,
 ) -> StockData:
     """Build StockData.
 
@@ -30,6 +37,7 @@ def stock_data(  # pylint: disable=too-many-arguments
     :param daily: an explicit daily price frame (overrides ``prices``)
     :param balance: {period_end: {canonical_column: value}} annual balance sheets
     :param balance_quarterly: the same for quarterly balance sheets
+    :param quarterly: {quarter_end: (revenue, net_income)} quarterly income statements
     """
     income = _frame(annual or {}, ["totalRevenue", "netIncome"]) if annual else pd.DataFrame()
     earnings = (
@@ -48,7 +56,7 @@ def stock_data(  # pylint: disable=too-many-arguments
     return StockData(
         ticker=ticker,
         income_annual=income,
-        income_quarterly=empty,
+        income_quarterly=_frame(quarterly, ["totalRevenue", "netIncome"]) if quarterly else empty,
         balance_annual=_sheet(balance),
         balance_quarterly=_sheet(balance_quarterly),
         cashflow_annual=empty,

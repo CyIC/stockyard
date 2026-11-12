@@ -12,6 +12,7 @@ from stockyard.research.models import (
     PastSalesResult,
     RecordOfStockResult,
     RevenueGrowthResult,
+    TrendResult,
 )
 from stockyard.research.price_stats import PriceStatsRow
 
@@ -182,3 +183,18 @@ def test_record_of_stock_table_and_comparisons():
     assert "Average P/E" in body and "11.25" in body
     assert "Current P/E (price / TTM EPS)" in body and "12.50" in body
     assert "Present price vs FY2025 high" in body and "-16.67%" in body
+
+
+def test_trend_summarises_the_chart_data():
+    result = TrendResult(
+        quarterly_revenue=(("2026-06-30", 5e9), ("2026-09-30", 6e9)),
+        quarterly_eps=(("2026-10-20", 1.1),),
+        monthly_prices=(),
+        warnings=(ReportWarning("figure_unavailable", "no monthly prices in the five years to 2026-11-11"),),
+    )
+    rendered = text.trend(result)
+
+    assert rendered.title == "Trends"
+    assert "Quarterly revenue" in rendered.body and "2 quarters" in rendered.body and "$6,000,000,000" in rendered.body
+    assert "Quarterly EPS" in rendered.body and "$1.10" in rendered.body
+    assert "⚠ no monthly prices" in rendered.body

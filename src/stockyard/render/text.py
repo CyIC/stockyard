@@ -9,6 +9,7 @@ from stockyard.research.models import (
     PastSalesResult,
     RecordOfStockResult,
     RevenueGrowthResult,
+    TrendResult,
 )
 
 NA = "n/a"
@@ -219,3 +220,21 @@ def record_of_stock(result: RecordOfStockResult) -> RenderedSection:
     )
     lines += _warnings(result.warnings)
     return RenderedSection("Record of Stock", "\n".join(lines))
+
+
+def trend(result: TrendResult) -> RenderedSection:
+    """Trends: a summary of the chart data (the charts themselves come from render.charts)."""
+    lines = []
+    if result.quarterly_revenue:
+        day, value = result.quarterly_revenue[-1]
+        lines.append(f"Quarterly revenue: {len(result.quarterly_revenue)} quarters; latest {day}: {_money(value)}")
+    if result.quarterly_eps:
+        day, value = result.quarterly_eps[-1]
+        lines.append(f"Quarterly EPS: {len(result.quarterly_eps)} reports; latest {day}: {_per_share(value)}")
+    if result.monthly_prices:
+        month, high, low, _, _ = result.monthly_prices[-1]
+        lines.append(
+            f"Monthly prices: {len(result.monthly_prices)} months; {month} high {_per_share(high)}, low {_per_share(low)}"
+        )
+    lines += _warnings(result.warnings)
+    return RenderedSection("Trends", "\n".join(lines))
