@@ -19,6 +19,7 @@ classifiers = [
 ]
 
 [tool.poetry.scripts]
+stockyard = "stockyard.cli:main"
 warren = "stockyard.bot:main"
 
 [tool.poetry.dependencies]

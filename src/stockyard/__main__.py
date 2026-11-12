@@ -1,5 +1,7 @@
-# -*- coding: utf-8 -*-
-"""``python -m stockyard`` runs Warren until the CLI takes this entry point over (plan phase 8)."""
-from stockyard.bot import main
+"""``python -m stockyard`` runs the CLI; Warren the bot is ``python -m stockyard.bot``."""
 
-main()
+import sys
+
+from stockyard.cli import main
+
+sys.exit(main())

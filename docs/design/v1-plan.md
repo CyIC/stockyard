@@ -125,7 +125,7 @@ until phase 8.6. `stock_analysis.py` retired.
 3. Console script `warren`; Docker `CMD ["-m", "stockyard.bot"]`; compose files updated. Bot verified
    running from the new entry point before Phase 8.
 
-## Phase 8 — CLI
+## Phase 8 — CLI ✅
 
 Tests call `stockyard.cli.main(argv)` with a fake data source:
 
