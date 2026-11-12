@@ -6,6 +6,7 @@ import pytest
 
 from stockyard.data.fundamentals import aligned_annual_fundamentals
 from tests.builders import quarterly_eps, stock_data
+from tests.fixture_replay import load_stock_data
 
 AS_OF = datetime.date(2026, 11, 11)
 DEC_QUARTERS_2025 = ["2025-03-31", "2025-06-30", "2025-09-30", "2025-12-31"]
@@ -167,21 +168,22 @@ def _complete_years(count):
     return annual, quarterly_eps(quarters)
 
 
-def test_five_complete_years_are_sufficient():
-    annual, eps = _complete_years(5)
+def test_four_complete_years_are_sufficient():
+    """D17: yfinance reliably supplies about four annual statements."""
+    annual, eps = _complete_years(4)
     result = _align(annual=annual, eps=eps)
 
     assert result.sufficient_history
     assert "insufficient_history" not in _codes(result)
 
 
-def test_four_complete_years_are_insufficient_and_say_what_was_needed():
-    annual, eps = _complete_years(4)
+def test_three_complete_years_are_insufficient_and_say_what_was_needed():
+    annual, eps = _complete_years(3)
     result = _align(annual=annual, eps=eps)
 
     assert not result.sufficient_history
     (warning,) = [w for w in result.warnings if w.code == "insufficient_history"]
-    assert (warning.needed, warning.available) == (5, 4)
+    assert (warning.needed, warning.available) == (4, 3)
 
 
 def test_price_windows_are_covered_only_when_prices_span_the_whole_fiscal_year():
@@ -208,3 +210,38 @@ def test_history_block_summarises_the_depth_of_data():
         "price_history_start": "2020-01-02",
         "sufficient_history": True,
     }
+
+
+# --- recorded fixtures (captured 2026-11-11) -------------------------------------------------
+
+
+def _recorded(ticker):
+    data, as_of = load_stock_data(ticker)
+    return aligned_annual_fundamentals(data, as_of)
+
+
+def test_ibm_fiscal_year_eps_is_the_sum_of_its_four_reported_quarters():
+    fy2025 = next(year for year in _recorded("IBM").years if year.fiscal_year == "FY2025")
+
+    assert fy2025.quarter_eps == (1.6, 2.8, 2.65, 4.52)
+    assert fy2025.reported_eps == pytest.approx(11.57)
+
+
+def test_msft_june_year_end_has_four_complete_years_which_is_sufficient():
+    result = _recorded("MSFT")
+
+    assert [year.fiscal_year for year in result.years] == ["FY2023", "FY2024", "FY2025", "FY2026"]
+    assert all(year.complete for year in result.years)
+    assert result.sufficient_history
+    assert result.current.fiscal_year == "FY2027"
+
+
+def test_rddt_keeps_pre_ipo_revenue_years_and_flags_its_partly_traded_ipo_year():
+    result = _recorded("RDDT")
+    by_year = {year.fiscal_year: year for year in result.years}
+
+    assert by_year["FY2022"].revenue is not None and not by_year["FY2022"].complete
+    assert by_year["FY2024"].complete and not by_year["FY2024"].prices_covered
+    assert by_year["FY2025"].prices_covered
+    assert result.history["complete_fiscal_years"] == 2
+    assert not result.sufficient_history

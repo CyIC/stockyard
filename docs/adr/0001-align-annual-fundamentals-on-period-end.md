@@ -53,9 +53,9 @@ Independent review found that the original decision cannot be implemented agains
 The core decision (income-statement period-end is the single source of truth) stands; these parts
 change:
 
-- **Threshold.** yfinance supplies about five annual statements, so `sufficient_history` requires
-  `YRS_LOOKBACK` (5) Complete Fiscal Years, not `YRS_LOOKBACK + 1`. Growth across n years spans n − 1
-  periods.
+- **Threshold.** yfinance reliably supplies about four annual statements (recorded 2026-11-11: MSFT 4;
+  IBM 5 with the oldest empty), so `sufficient_history` requires 4 Complete Fiscal Years, not 6. Growth
+  across n years spans n − 1 periods. Deeper history (SEC EDGAR backfill) is a later decision.
 - **Quarter-ends are derived** from the annual period-ends (−9, −6, −3 months; the in-progress year
   continues +3, +6, +9, +12 months after the last period-end), because
   `quarterly_financials` holds only about five quarters while EPS history is longer. Each announcement

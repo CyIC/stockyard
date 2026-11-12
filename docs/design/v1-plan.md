@@ -48,7 +48,7 @@ One rule per test, synthetic frames first, then fixtures:
 4. Fiscal-year rows keep revenue and net income when EPS is incomplete (pre-IPO years); Complete vs
    Current Year (`quarters_reported` 0–4; 4 of 4 without an annual row → `awaiting_annual_statement`,
    excluded from comparisons).
-5. `sufficient_history` true at 5 complete years, false at 4.
+5. `sufficient_history` true at 4 complete years, false at 3 (D17).
 6. Balance sheet and cash flow: annual rows only at real period-ends; latest quarter separate.
 7. Fiscal-year price windows `(Pᵢ₋₁, Pᵢ]` from daily bars; partially covered (pre-IPO) years → `null`.
 8. `history` block.

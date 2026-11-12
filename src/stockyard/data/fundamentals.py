@@ -13,7 +13,7 @@ import pandas as pd
 from stockyard.data.snapshot import StockData
 from stockyard.report_warning import ReportWarning
 
-YRS_LOOKBACK = 5  # Complete Fiscal Years the SSG compares (D12)
+YRS_LOOKBACK = 4  # Complete Fiscal Years required (D17: what yfinance reliably supplies; SEC EDGAR backfill later)
 QUARTER_OFFSETS_MONTHS = (9, 6, 3, 0)  # quarter-ends of fiscal year P: P-9m, P-6m, P-3m, P
 CURRENT_YEAR_OFFSETS_MONTHS = (-3, -6, -9, -12)  # in-progress year after the last period-end P: P+3m ... P+12m
 MAX_REPORTING_LAG_DAYS = 120
@@ -161,7 +161,7 @@ def aligned_annual_fundamentals(data: StockData, as_of: datetime.date) -> Aligne
         warnings.append(
             ReportWarning(
                 "insufficient_history",
-                f"{complete} complete fiscal years; the Stock Selection Guide compares {YRS_LOOKBACK}",
+                f"{complete} complete fiscal years; {YRS_LOOKBACK} needed",
                 needed=YRS_LOOKBACK,
                 available=complete,
             )
