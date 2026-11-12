@@ -214,32 +214,6 @@ def test_earnings_growth_reports_positive_swing_out_of_a_loss():
 
 
 # --------------------------------------------------------------------------------------
-# past_sales_records
-# --------------------------------------------------------------------------------------
-def test_past_sales_records_compounds_growth_over_elapsed_periods():
-    """Five annual observations span four growth periods, so the exponent is 1/4.
-
-    Using 1/YRS_LOOKBACK understates the rate: doubling revenue across those five rows is
-    18.92% a year, not the 14.87% a fifth-root produces.
-    """
-    revenue = pd.DataFrame({"totalRevenue": [100.0, 120.0, 150.0, 180.0, 200.0]}, index=_annual_index(5))
-
-    msg = stock_analysis.past_sales_records(revenue)
-
-    assert _pct(_field(msg, "Compound Annual Sales Growth Rate")) == pytest.approx(2 ** (1 / 4) - 1, abs=1e-4)
-
-
-def test_past_sales_records_averages_the_outer_year_pairs():
-    revenue = pd.DataFrame({"totalRevenue": [100.0, 120.0, 150.0, 180.0, 200.0]}, index=_annual_index(5))
-
-    msg = stock_analysis.past_sales_records(revenue)
-
-    # (200 + 180)/2 against (100 + 120)/2
-    assert _pct(_field(msg, "% increase in sales")) == pytest.approx((190.0 - 110.0) / 110.0, abs=1e-4)
-    assert _money(_field(msg, "Sales for most recent year")) == pytest.approx(200.0)
-
-
-# --------------------------------------------------------------------------------------
 # past_eps
 # --------------------------------------------------------------------------------------
 def test_past_eps_compounds_growth_over_elapsed_periods():
@@ -348,11 +322,10 @@ def _run_with_mocked_sections(earnings, **section_mocks):
         setattr(yf_mock, getter, MagicMock(return_value=MagicMock()))
     yf_mock.get_yfinance_earnings = MagicMock(return_value=earnings)
 
-    utils_mock = MagicMock()
+    utils_mock = section_mocks.pop("utils", None) or MagicMock()
     utils_mock.send_message_in_chunks = AsyncMock()
 
     defaults = {
-        "past_sales_records": MagicMock(),
         "past_eps": MagicMock(),
         "record_of_stock": MagicMock(return_value=(["msg"], 5.0)),
         "trend": MagicMock(return_value=("trend", [])),
@@ -370,6 +343,22 @@ def _run_with_mocked_sections(earnings, **section_mocks):
     return defaults
 
 
+def test_run_posts_past_sales_from_the_new_core(core_stub):
+    """Phase 4: Past Sales comes from research.sections + render.text, with fiscal-year labels."""
+    utils_mock = MagicMock()
+    utils_mock.send_message_in_chunks = AsyncMock()
+    earnings = {
+        "annualEarnings": pd.DataFrame({"reportedEPS": [2.0, 3.0]}, index=_annual_index(2)),
+        "quarterlyEarnings": _quarterly_eps_fixture([0.5, 0.6, 0.7, 0.8, 0.9]),
+    }
+    _run_with_mocked_sections(earnings, utils=utils_mock)
+
+    posted = [str(call.args[1]) for call in utils_mock.send_message_in_chunks.await_args_list]
+    (past_sales_message,) = [m for m in posted if "Past Sales Records" in m]
+    assert "FY2022" in past_sales_message and "FY2025" in past_sales_message
+
+
+@pytest.mark.usefixtures("core_stub")
 def test_run_passes_trailing_twelve_month_eps_to_revenue_growth():
     """run() must hand revenue_growth an annual EPS, not a single quarter's.
 

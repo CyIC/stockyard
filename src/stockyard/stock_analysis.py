@@ -12,6 +12,11 @@ from dateutil.relativedelta import relativedelta
 from prettytable import PrettyTable
 
 from stockyard import utilities as utils
+from stockyard.clock import new_york_today
+from stockyard.data.fundamentals import aligned_annual_fundamentals
+from stockyard.data.snapshot import fetch_stock_data
+from stockyard.render import text
+from stockyard.research import sections
 from stockyard import yfinance_integration as yf_api
 
 YRS_LOOKBACK = 5
@@ -62,51 +67,6 @@ def _cagr(first, last, periods):
     :return: growth rate as a fraction
     """
     return pow(last / first, 1 / periods) - 1
-
-
-def past_sales_records(income_statement):
-    """Build Past Sales Record section of report.
-
-    :param income_statement:
-    :return: <str> a message of the section to print
-    """
-    # Past Sales Records
-    sales_per_year = income_statement["totalRevenue"]
-    # Last year and year before sales
-    recent_sales_trend = (sales_per_year.iloc[-1] + sales_per_year.iloc[-2]) / 2
-    # Years 5 and 6 sales
-    past_sales_trend = (sales_per_year.iloc[0] + sales_per_year.iloc[1]) / 2
-    sales_increase = recent_sales_trend - past_sales_trend
-    sales_percent_increase = sales_increase / past_sales_trend
-    compound_annual_sales_growth_rate = _cagr(sales_per_year.iloc[0], sales_per_year.iloc[-1], len(sales_per_year) - 1)
-    # display table
-    past_sales_record_table = PrettyTable(float_format=".4")
-    past_sales_record_table.header = False
-    past_sales_record_table.border = False
-    past_sales_record_table.add_row(["Sales for most recent year", "${:20,.0f}".format(sales_per_year.iloc[-1])])
-    past_sales_record_table.add_row(["Sales for next most recent year", "${:20,.0f}".format(sales_per_year.iloc[-2])])
-    past_sales_record_table.add_row(
-        [
-            "Sales for {} years ago".format(YRS_LOOKBACK - 1),
-            "${:20,.0f}".format(sales_per_year.iloc[1]),
-        ]
-    )
-    past_sales_record_table.add_row(
-        [
-            f"Sales for {YRS_LOOKBACK} years ago",
-            f"${sales_per_year.iloc[0]:20,.0f}",
-        ]
-    )
-    past_sales_record_table.add_row(["% increase in sales", f"{sales_percent_increase.round(4):.3%}"])
-    past_sales_record_table.add_row(
-        [
-            "Compound Annual Sales Growth Rate",
-            f"{compound_annual_sales_growth_rate.round(4):.3%}",
-        ]
-    )
-    past_sales_record_table.align["Field 1"] = "l"
-    past_sales_record_table.align["Field 2"] = "r"
-    return f"__**Past Sales Records**__\n```{past_sales_record_table}```"
 
 
 def past_eps(earnings):
@@ -991,6 +951,11 @@ d) {dividend_low:.4f} to 1```""".format(
     return msg, files
 
 
+def _discord(rendered) -> str:
+    """Wrap a rendered section the way the 0.1 report looked (replaced by render.discord in phase 6)."""
+    return f"__**{rendered.title}**__\n```{rendered.body}```"
+
+
 async def run(message, ticker):
     """Run stock analysis.
 
@@ -998,6 +963,10 @@ async def run(message, ticker):
     :param ticker: Company stock ticker
     :return:
     """
+    # New core (v1): fetched once; sections move onto it one at a time (plan phase 4)
+    data = fetch_stock_data(ticker)
+    as_of = new_york_today()
+    fundamentals = aligned_annual_fundamentals(data, as_of)
     # Get Company Data
     income_statement = yf_api.get_yfinance_income_statement(ticker)
     balance_sheet = yf_api.get_yfinance_balance_sheet(ticker)
@@ -1015,7 +984,9 @@ async def run(message, ticker):
         return
 
     # Build and send report components
-    await utils.send_message_in_chunks(message.channel, past_sales_records(income_statement["annualReports"]))
+    await utils.send_message_in_chunks(
+        message.channel, _discord(text.past_sales(sections.past_sales(data, fundamentals, as_of)))
+    )
     await message.channel.send(past_eps(earnings["annualEarnings"]))
     msg, high_yield = record_of_stock(earnings, income_statement, daily_company_prices, monthly_company_prices)
     await utils.send_message_in_chunks(message.channel, msg)

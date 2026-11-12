@@ -140,6 +140,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         for fig in charts:
             self.assertIsInstance(fig, str)
 
+    @pytest.mark.usefixtures("core_stub")
     def test_run_calls_risk_reward_with_matching_signature(self):
         """run() must call risk_reward with an argument list its signature accepts.
 
@@ -177,7 +178,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         # WHEN / THEN run() completes without a signature TypeError
         with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
             stock_analysis, "utils", utils_mock
-        ), patch.object(stock_analysis, "past_sales_records", MagicMock()), patch.object(
+        ), patch.object(
             stock_analysis, "past_eps", MagicMock()
         ), patch.object(
             stock_analysis, "record_of_stock", MagicMock(return_value=(["msg"], 5.0))
@@ -197,6 +198,7 @@ class StockAnalysisTestCase(unittest.TestCase):
 
         risk_reward_mock.assert_called_once()
 
+    @pytest.mark.usefixtures("core_stub")
     def test_run_bails_out_when_quarterly_earnings_missing(self):
         """run() warns and returns early when earnings data is incomplete.
 
