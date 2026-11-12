@@ -108,7 +108,15 @@ removed. Coverage 98 %.
 3. **Charts:** OO `Figure` API, every figure closed, output only in the given directory; a test renders
    from several threads concurrently and asserts correct files and zero open figures.
 
-## Phase 7 — Bot port (Warren) — before the CLI
+## Phase 7 — Bot port (Warren) — before the CLI ✅
+
+`stockyard.bot`: pure command parsing, `handle_message` dispatch, `!sr` built with `build_report` in
+`asyncio.to_thread` using the same-day cache, friendly replies for invalid ticker / no data / upstream
+failure, `!bug` removed, token read in `main()` with a clear exit when missing. Console script `warren`,
+`python -m stockyard.bot`, Docker `CMD ["-m", "stockyard.bot"]`. `python -m stockyard` still starts Warren
+until phase 8.6. `stock_analysis.py` retired.
+
+### Original plan
 
 1. `stockyard.bot` package; token resolved in `main()`; importing needs no token.
 2. `!sr` runs report generation in `asyncio.to_thread`, posts rendered chunks and charts from a

@@ -113,7 +113,7 @@ USER nonroot
 # (/usr/bin/python), which lacks the app; resetting ENTRYPOINT to the venv python ensures
 # `stockyard` is importable. Exec form works without a shell in the distroless image.
 ENTRYPOINT ["/app/.venv/bin/python"]
-CMD ["-m", "stockyard"]
+CMD ["-m", "stockyard.bot"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD ["/app/.venv/bin/python", "-c", "import stockyard, sys; sys.exit(0)"]
