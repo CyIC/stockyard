@@ -20,6 +20,7 @@ from stockyard.research.models import (
     CashPositionResult,
     CashRow,
     EarningsGrowthResult,
+    FundamentalsResult,
     LowEstimate,
     PastEpsResult,
     PastSalesResult,
@@ -504,4 +505,19 @@ def risk_reward(data: StockData, fundamentals: AlignedFundamentals, as_of: datet
         monthly_lows=monthly,
         low_forecast_line=low_line,
         warnings=tuple(warnings),
+    )
+
+
+def fundamentals_table(data: StockData, fundamentals: AlignedFundamentals, as_of: datetime.date) -> FundamentalsResult:
+    """Fundamentals (section id ``fundamentals``): fiscal years, current year, history and alignment warnings."""
+    del data, as_of
+    current = fundamentals.current
+    return FundamentalsResult(
+        years=tuple(
+            (y.fiscal_year, y.period_end.isoformat(), y.revenue, y.net_income, y.reported_eps)
+            for y in fundamentals.years
+        ),
+        current=None if current is None else dict(current.__dict__),
+        history=fundamentals.history,
+        warnings=fundamentals.warnings,
     )

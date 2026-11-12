@@ -2,9 +2,11 @@
 """Plain-text rendering of section results, shared by the CLI and (wrapped) Discord (design §6)."""
 from dataclasses import dataclass
 
+from stockyard.data.fundamentals import YRS_LOOKBACK
 from stockyard.research.models import (
     CashPositionResult,
     EarningsGrowthResult,
+    FundamentalsResult,
     PastEpsResult,
     PastSalesResult,
     RecordOfStockResult,
@@ -284,3 +286,24 @@ def risk_reward(result: RiskRewardResult) -> RenderedSection:
         lines += [""] + _table(header, rows)
     lines += _warnings(result.warnings)
     return RenderedSection("Evaluating Risk & Reward", "\n".join(lines))
+
+
+def fundamentals(result: FundamentalsResult) -> RenderedSection:
+    """Fundamentals: the aligned fiscal-year table, the in-progress year and the depth of history."""
+    rows = [
+        [fy, end, _money(revenue), _money(income), _per_share(eps)] for fy, end, revenue, income, eps in result.years
+    ]
+    lines = _table(["Fiscal year", "Period end", "Revenue", "Net income", "EPS"], rows) if rows else []
+    current = result.current
+    if current:
+        status = (
+            "awaiting annual statement"
+            if current["awaiting_annual_statement"]
+            else f"{current['quarters_reported']} of 4 quarters reported"
+        )
+        lines.append(f"Current {current['fiscal_year']}: {status}, EPS to date {_per_share(current['eps_to_date'])}")
+    history = result.history
+    verdict = "sufficient" if history["sufficient_history"] else f"insufficient ({YRS_LOOKBACK} needed)"
+    lines.append(f"{history['complete_fiscal_years']} complete fiscal year(s); history {verdict}")
+    lines += _warnings(result.warnings)
+    return RenderedSection("Fundamentals", "\n".join(lines))

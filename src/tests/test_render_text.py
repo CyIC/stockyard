@@ -8,6 +8,7 @@ from stockyard.research.models import (
     CashPositionResult,
     CashRow,
     EarningsGrowthResult,
+    FundamentalsResult,
     LowEstimate,
     PastEpsResult,
     PastSalesResult,
@@ -219,3 +220,28 @@ def test_risk_reward_summary_and_low_estimate_table():
     assert "Linear regression of lows" in body
     average_line = next(line for line in body.splitlines() if line.startswith("Average of fiscal-year lows"))
     assert "$25.00–$31.25" in average_line and "maybe" in average_line and "1.50 to 1" in average_line
+
+
+def test_fundamentals_table_current_year_and_history():
+    result = FundamentalsResult(
+        years=(("FY2024", "2024-12-31", 62.753e9, 6.023e9, 10.33), ("FY2025", "2025-12-31", 67.536e9, 10.593e9, None)),
+        current={
+            "fiscal_year": "FY2026",
+            "quarters_reported": 3,
+            "eps_to_date": 7.79,
+            "awaiting_annual_statement": False,
+        },
+        history={
+            "complete_fiscal_years": 1,
+            "quarters_reported": 3,
+            "price_history_start": "2021-01-04",
+            "sufficient_history": False,
+        },
+        warnings=(),
+    )
+    body = text.fundamentals(result).body
+
+    assert text.fundamentals(result).title == "Fundamentals"
+    assert "FY2024" in body and "2024-12-31" in body and "$62,753,000,000" in body and "$10.33" in body
+    assert "Current FY2026: 3 of 4 quarters reported, EPS to date $7.79" in body
+    assert "1 complete fiscal year(s); history insufficient (4 needed)" in body

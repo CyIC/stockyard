@@ -128,3 +128,13 @@ class RiskRewardResult:  # pylint: disable=too-many-instance-attributes
     monthly_lows: tuple  # ((month, low), ...)
     low_forecast_line: tuple
     warnings: tuple
+
+
+@dataclass(frozen=True)
+class FundamentalsResult:
+    """The aligned fiscal-year table (section id ``fundamentals``): CLI and JSON only."""
+
+    years: tuple  # ((fiscal_year, period_end, revenue, net_income, reported_eps), ...)
+    current: dict | None
+    history: dict
+    warnings: tuple

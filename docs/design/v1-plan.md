@@ -53,7 +53,16 @@ One rule per test, synthetic frames first, then fixtures:
 7. Fiscal-year price windows `(Pᵢ₋₁, Pᵢ]` from daily bars; partially covered (pre-IPO) years → `null`.
 8. `history` block.
 
-## Phase 4 — Definitions, then sections
+## Phase 4 — Definitions, then sections ✅
+
+`a4d999e` definitions · `98f3e3d` shared price stats · `4408649` New York clock · sections:
+`7bd4da0` past sales · `732c997` past EPS · `fe22cd5` earnings growth · `37abb8d` cash position (D18) ·
+`742c461` revenue growth + Lynch (D15) · `7c485a2` record of stock · `2c510a7` trend + thread-safe charts
+(phase 6.3 pulled forward) · `00ba1e6`/`7d304b1` risk & reward, `!sr` fully on the new core ·
+`9daa901` D19 · fundamentals. Remaining legacy modules (`yfinance_integration.py`, the IBM legacy
+fixture and its loader, `prettytable`) are removed in phase 6.
+
+### Original plan
 
 **4.0 Switch the pipeline first.** `stock_analysis.run()` obtains `StockData` via `fetch_stock_data` and
 passes `as_of = today`; existing behaviour otherwise unchanged. (Keeps the bot working as sections move.)
