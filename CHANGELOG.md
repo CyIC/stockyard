@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Added
+    * Release pipeline: publishing a GitHub release tests, builds `ghcr.io/cyic/stockyard:<tag>` and deploys
+      that image to DigitalOcean App Platform as the `warren` worker
+
+### Changed
+    * `.do/app.yml` runs the CI-built image by digest instead of building on DigitalOcean on every push to `main`
+
 ## [1.0.0] - 2026-11-13
 
 Version 1.0 renames the project to **Stockyard** (the Discord bot keeps the name Warren) and rebuilds it as a

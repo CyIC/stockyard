@@ -27,9 +27,8 @@ def test_healthcheck_snippet_succeeds(code):
     assert result.returncode == 0, result.stderr
 
 
-@pytest.mark.parametrize("name", ["app.yml", "deploy.yaml"])
-def test_digitalocean_runs_warren_as_a_worker_from_the_dockerfile(name):
-    spec = (ROOT / ".do" / name).read_text(encoding="utf-8")
+def test_deploy_button_spec_runs_warren_as_a_worker_from_the_dockerfile():
+    spec = (ROOT / ".do" / "deploy.yaml").read_text(encoding="utf-8")
 
     assert "workers:" in spec and "services:" not in spec  # a Discord bot has no HTTP port
     assert "dockerfile_path: Dockerfile" in spec and (ROOT / "Dockerfile").exists()
@@ -84,3 +83,28 @@ def test_lxml_is_a_direct_dependency():
     lock = tomllib.loads((ROOT / "poetry.lock").read_text(encoding="utf-8"))
     assert "lxml" in project["tool"]["poetry"]["dependencies"]
     assert "lxml" in {package["name"] for package in lock["package"]}
+
+
+def test_app_platform_runs_the_released_image_as_a_worker():
+    spec = (ROOT / ".do" / "app.yml").read_text(encoding="utf-8")
+
+    assert "workers:" in spec and "services:" not in spec  # a Discord bot has no HTTP port
+    assert "dockerfile_path" not in spec and "github:" not in spec  # App Platform never builds; it runs CI's image
+    assert re.search(r"image:\n\s+registry_type: GHCR\n\s+registry: cyic\n\s+repository: stockyard\n", spec)
+    assert "digest: ${WARREN_DIGEST}" in spec and "deploy_on_push" not in spec  # exact image, deployed only by CI
+    assert "instance_size_slug: apps-s-1vcpu-0.5gb" in spec
+    assert re.search(r"key: DISCORD_TOKEN\n\s+scope: RUN_TIME\n\s+type: SECRET\n\s+value: \$\{DISCORD_TOKEN\}", spec)
+    assert re.search(r"key: STOCKYARD_DATA_DIR\n\s+scope: RUN_TIME\n\s+value: /tmp/", spec)  # no volumes there
+
+
+def test_release_workflow_tests_then_builds_then_deploys():
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+
+    assert re.search(r"on:\n\s+release:\n\s+types: \[published\]", workflow)
+    assert re.search(r"build:\n(.*\n)*?\s+needs: test\n", workflow)
+    assert re.search(r"deploy:\n(.*\n)*?\s+needs: build\n", workflow)
+    assert "tox -e flake8,pylint,py313" in workflow
+    assert "ghcr.io/cyic/stockyard:${{ github.event.release.tag_name }}" in workflow  # GHCR names must be lower case
+    assert "digitalocean/app_action/deploy@v2" in workflow and "app_spec_location: .do/app.yml" in workflow
+    assert "WARREN_DIGEST: ${{ needs.build.outputs.digest }}" in workflow
+    assert "environment: production" in workflow and "packages: write" in workflow

@@ -1,16 +1,22 @@
+# App Platform spec for Warren, deployed by .github/workflows/release.yml when a release is published.
+# App Platform never builds here: it runs the exact image CI built and tested, pinned by digest.
+# ${WARREN_DIGEST} and ${DISCORD_TOKEN} are filled in by digitalocean/app_action at deploy time;
+# App Platform stores DISCORD_TOKEN encrypted.
 name: stockyard
 workers:
 - name: warren
-  dockerfile_path: Dockerfile
-  github:
-    repo: CyIC/stockyard
-    branch: main
-    deploy_on_push: true
+  image:
+    registry_type: GHCR
+    registry: cyic
+    repository: stockyard
+    digest: ${WARREN_DIGEST}
   instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
   envs:
   - key: DISCORD_TOKEN
     scope: RUN_TIME
     type: SECRET
+    value: ${DISCORD_TOKEN}
   - key: STOCKYARD_DATA_DIR
     scope: RUN_TIME
     value: /tmp/stockyard
