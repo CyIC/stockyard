@@ -2,14 +2,23 @@
 """StockData: everything one report needs, fetched once (design §5.1)."""
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 import pandas as pd
 import yfinance as yf
+from yfinance.exceptions import YFRateLimitError
 
 from stockyard.data.cache import Cache, RecordingTicker, ReplayTicker
-from stockyard.data.errors import DataUnavailable, UpstreamError
+from stockyard.data.errors import DataUnavailable, RateLimited, UpstreamError
 from stockyard.data.tickers import validate_ticker
-from stockyard.data.yfinance_source import BALANCE_FIELD_MAP, CASHFLOW_FIELD_MAP, INCOME_FIELD_MAP, _remap_columns
+from stockyard.data.yfinance_source import (
+    BALANCE_FIELD_MAP,
+    CASHFLOW_FIELD_MAP,
+    INCOME_FIELD_MAP,
+    RateLimitWatch,
+    _remap_columns,
+    rate_limit_watch,
+)
 
 MIN_EARNINGS_ROWS = 28
 PRICE_COLUMNS = {
@@ -75,17 +84,29 @@ def _prices(stock, income_annual: pd.DataFrame) -> pd.DataFrame:
     return prices.sort_index()
 
 
-def fetch_stock_data(raw_ticker: str, *, ticker_factory: Callable = yf.Ticker, cache: Cache | None = None) -> StockData:
+def fetch_stock_data(
+    raw_ticker: str,
+    *,
+    ticker_factory: Callable | None = None,
+    cache: Cache | None = None,
+    rate_limits: RateLimitWatch | None = None,
+) -> StockData:
     """Validate the ticker and fetch everything a report needs in one pass.
 
     :param raw_ticker: symbol as typed by a user or agent
-    :param ticker_factory: builds the yfinance Ticker (injectable for tests)
+    :param ticker_factory: builds the yfinance Ticker (injectable for tests); default: live yfinance,
+        fetching through the process-wide rate-limit watch
     :param cache: same-day cache; None disables caching (``--no-cache``)
+    :param rate_limits: notices 429s yfinance swallows (injectable for tests)
     :raises InvalidTicker: before any network access, if the symbol is not plausible
+    :raises RateLimited: if Yahoo rate limited any request, raised or swallowed; nothing is cached
     :raises UpstreamError: if the data source raises while fetching
     :raises DataUnavailable: if there are neither statements nor prices for the ticker
     """
     ticker = validate_ticker(raw_ticker)
+    if ticker_factory is None:
+        rate_limits = rate_limits or rate_limit_watch()
+        ticker_factory = partial(yf.Ticker, session=rate_limits)
     cached = cache.load(ticker) if cache is not None else None
     if cached is not None:
         stock = ReplayTicker(cached)
@@ -93,10 +114,7 @@ def fetch_stock_data(raw_ticker: str, *, ticker_factory: Callable = yf.Ticker, c
         stock = ticker_factory(ticker)
         if cache is not None:
             stock = RecordingTicker(stock)
-    try:
-        data = _fetch(ticker, stock)
-    except Exception as exc:  # pylint: disable=broad-exception-caught  # any yfinance failure is upstream
-        raise UpstreamError(f"fetching {ticker} failed: {exc}") from exc
+    data = _fetch_watching_upstream(ticker, stock, rate_limits)
     statements = (
         data.income_annual,
         data.income_quarterly,
@@ -109,6 +127,22 @@ def fetch_stock_data(raw_ticker: str, *, ticker_factory: Callable = yf.Ticker, c
         raise DataUnavailable(f"no statements or prices for {ticker}")
     if cache is not None and cached is None:
         cache.save(ticker, stock.to_dict())
+    return data
+
+
+def _fetch_watching_upstream(ticker: str, stock, rate_limits: RateLimitWatch | None) -> StockData:
+    """Fetch; any yfinance failure becomes UpstreamError, any rate limit (raised or swallowed) RateLimited."""
+    rate_limited = f"fetching {ticker}: Yahoo Finance rate limited the request; try again later"
+    if rate_limits is not None:
+        rate_limits.begin()
+    try:
+        data = _fetch(ticker, stock)
+    except YFRateLimitError as exc:
+        raise RateLimited(rate_limited) from exc
+    except Exception as exc:  # pylint: disable=broad-exception-caught  # any yfinance failure is upstream
+        raise UpstreamError(f"fetching {ticker} failed: {exc}") from exc
+    if rate_limits is not None and rate_limits.hit:  # yfinance swallowed it: some data is missing
+        raise RateLimited(rate_limited)
     return data
 
 

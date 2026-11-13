@@ -17,7 +17,7 @@ from stockyard import logging_config
 from stockyard.clock import new_york_today
 from stockyard.config import Settings
 from stockyard.data.cache import Cache
-from stockyard.data.errors import DataUnavailable, UpstreamError
+from stockyard.data.errors import DataUnavailable, RateLimited, UpstreamError
 from stockyard.data.snapshot import fetch_stock_data
 from stockyard.data.tickers import InvalidTicker, validate_ticker
 from stockyard.render import charts, text
@@ -26,6 +26,8 @@ from stockyard.research.report import build_report
 from stockyard.utilities import load_discord_token
 
 LOGGER = logging.getLogger(__name__)
+RATE_LIMITED = "Yahoo Finance is rate-limiting requests right now. Please try again in a few minutes."
+UNREACHABLE = "I couldn't reach the market data source. Please try again later."
 
 HELP = (
     "Hi! I'm Warren, the Cypress Investment Club's research assistant. I don't know or save your name.\n"
@@ -96,8 +98,9 @@ async def stock_report(message, argument: str) -> None:
         await message.channel.send("✅ __**Stock Report Finished!**__")
     except DataUnavailable:
         await _failed(message, f"No data available for {ticker}.")
-    except UpstreamError:
-        await _failed(message, "I couldn't reach the market data source. Please try again later.")
+    except UpstreamError as exc:
+        LOGGER.warning("stock report for %s: %s", ticker, exc)
+        await _failed(message, RATE_LIMITED if isinstance(exc, RateLimited) else UNREACHABLE)
     except Exception:  # pylint: disable=broad-exception-caught  # report it in the channel, log the details
         LOGGER.exception("stock report for %s failed", ticker)
         await _failed(message, "❌ __**Stock Report Failed!**__")

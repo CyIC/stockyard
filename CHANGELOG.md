@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Fixed
+    * Yahoo Finance rate limits are always reported as rate limits. yfinance swallows some of them and returns
+      empty statements, which produced partial reports or "no data" for valid tickers and cached them for the
+      day. Every request is now watched for 429 Too Many Requests: the CLI exits 4 (`upstream_error`, message
+      says rate limited), Warren says to try again in a few minutes, and nothing from that fetch is cached
+    * Warren logs upstream failures; the CLI no longer crashes on subclasses of its known errors
+
 ## [1.0.0] - 2026-11-13
 
 Version 1.0 renames the project to **Stockyard** (the Discord bot keeps the name Warren) and rebuilds it as a
