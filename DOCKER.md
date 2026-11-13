@@ -89,16 +89,39 @@ virtualenv. A test (`src/tests/test_deployment.py`) runs each check so they cann
 
 ## DigitalOcean App Platform
 
-`.do/app.yml` (and the deploy-button spec `.do/deploy.yaml`) builds the Dockerfile and runs Warren as a
-**worker** (it has no HTTP port). On App Platform:
+Warren runs on App Platform as a **worker** (it has no HTTP port), deployed by GitHub Actions whenever a
+GitHub release is published (`.github/workflows/release.yml`):
 
-- Set `DISCORD_TOKEN` as an encrypted (SECRET) environment variable on the app; the build fails to start
-  without it.
-- `STOCKYARD_DATA_DIR` is `/tmp/stockyard`, because App Platform has no volumes and the non-root user cannot
-  create `/app/data`. The cache is lost on each restart, which only costs a fresh fetch.
-- `app.yml` deploys on every push to `main`.
-- The spec in the repository does not change a running app by itself; apply it with
-  `doctl apps update <app-id> --spec .do/app.yml` or in the DigitalOcean dashboard.
+1. **test**: `tox -e flake8,pylint,py313`, the same gate as CI.
+2. **build**: builds the Dockerfile once (linux/amd64) and pushes `ghcr.io/cyic/stockyard:<release tag>` and
+   `:latest`.
+3. **deploy**: `digitalocean/app_action` applies `.do/app.yml` with that image's **digest**, so App Platform
+   runs exactly the image that was tested and never builds anything itself. The app is created on the first
+   deploy.
+
+### One-time setup
+
+1. **DigitalOcean API token**: in DigitalOcean, create a personal access token that can create and update apps.
+2. **GitHub environment**: in CyIC/stockyard, open **Settings → Environments → New environment**, name it
+   `production`, and add two secrets:
+   - `DIGITALOCEAN_ACCESS_TOKEN`: the token from step 1
+   - `DISCORD_TOKEN`: Warren's bot token (passed to App Platform, which stores it encrypted)
+
+   Optionally add yourself as a required reviewer so every deploy waits for your approval.
+3. **First release**: publish a release (e.g. `v1.0.1`). After the image is pushed for the first time, check
+   that the package at `github.com/orgs/CyIC/packages` is **public**. App Platform pulls it without
+   credentials, so a private package makes the deploy fail.
+
+### On App Platform
+
+- Size `apps-s-1vcpu-0.5gb` (1 shared vCPU, 512 MiB), one instance.
+- `STOCKYARD_DATA_DIR` is `/tmp/stockyard`: App Platform has no volumes, so the same-day cache starts empty
+  after each deploy or restart, which only costs a fresh fetch.
+- Logs are under the app's **Runtime Logs** in the DigitalOcean dashboard.
+- **Rollback**: re-run the deploy job of an earlier release in GitHub Actions; it redeploys that release's
+  image by digest.
+
+`.do/deploy.yaml` is a separate spec that builds the Dockerfile from source; it is not used by the pipeline.
 
 ## Management Commands
 
