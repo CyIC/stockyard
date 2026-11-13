@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Plain-text rendering of section results, shared by the CLI and (wrapped) Discord (design §6)."""
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 
 from stockyard.data.fundamentals import YRS_LOOKBACK
 from stockyard.research.models import (
@@ -27,9 +28,15 @@ class RenderedSection:
 
 
 def _money(value: float | None) -> str:
+    """Whole millions from $1M up ("$13,587M"), whole dollars below, halves rounded up, sign first."""
     if value is None:
         return NA
-    return f"-${-value:,.0f}" if value < 0 else f"${value:,.0f}"
+    size = Decimal(str(abs(value)))
+    if size >= 1_000_000:
+        amount = f"${(size / 1_000_000).quantize(Decimal(1), ROUND_HALF_UP):,}M"
+    else:
+        amount = f"${size.quantize(Decimal(1), ROUND_HALF_UP):,}"
+    return f"-{amount}" if value < 0 else amount
 
 
 def _pct(value: float | None) -> str:

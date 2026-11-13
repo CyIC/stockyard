@@ -28,6 +28,9 @@ library with two front ends. See `docs/design/v1.md` for the design and decision
       and `python -m stockyard` runs the CLI (ADR-0005)
     * Market data from yfinance instead of Alpha Vantage; no API key needed
     * Dependencies refreshed for Python 3.13: numpy 2.5, pandas 2.3, matplotlib 3.11, discord.py 2.7
+    * Text and Discord reports show dollar amounts of $1M or more in whole millions (`$13,587M`, halves rounded
+      up); smaller amounts, per-share figures and share counts are unchanged, and JSON keeps full values
+    * Negative per-share figures read `-$43.14`; Cash Position tables head their label column `LINE ITEM`
     * Figures are aligned on each company's fiscal-year period-ends (ADR-0001); rows are labelled `FY####`
     * History threshold is 4 complete fiscal years (D17); recent IPOs get partial reports instead of errors
     * Zones are 25 / 50 / 25 (D14)

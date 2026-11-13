@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Terminal/text rendering of section results (design §6)."""
 import datetime
+import re
 
 from stockyard.render import text
 from stockyard.report_warning import ReportWarning
@@ -43,14 +44,14 @@ def test_past_sales_shows_each_fiscal_year_with_its_label():
     rendered = text.past_sales(_past_sales())
 
     assert rendered.title == "Past Sales Records"
-    assert "FY2022" in rendered.body and "$60,530,000,000" in rendered.body
-    assert "FY2025" in rendered.body and "$67,536,000,000" in rendered.body
+    assert "FY2022" in rendered.body and "$60,530M" in rendered.body
+    assert "FY2025" in rendered.body and "$67,536M" in rendered.body
 
 
 def test_past_sales_shows_growth_figures_with_the_years_they_span():
     body = text.past_sales(_past_sales()).body
 
-    assert "Recent two-year average (FY2024–FY2025)" in body and "$65,144,500,000" in body
+    assert "Recent two-year average (FY2024–FY2025)" in body and "$65,145M" in body
     assert "Oldest two-year average (FY2022–FY2023)" in body
     assert "% increase in sales" in body and "6.45%" in body
     assert "Compound annual growth (FY2022→FY2025)" in body and "3.72%" in body
@@ -96,8 +97,8 @@ def test_earnings_growth_table():
     assert rendered.title == "Earnings Growth"
     lines = rendered.body.splitlines()
     assert lines[0].split() == ["Fiscal", "year", "Net", "income", "Change", "%", "change"]
-    assert "FY2024" in lines[1] and "-$50,000,000" in lines[1] and "n/a" in lines[1]
-    assert "FY2025" in lines[2] and "$250,000,000" in lines[2] and "500.00%" in lines[2]
+    assert "FY2024" in lines[1] and "-$50M" in lines[1] and "n/a" in lines[1]
+    assert "FY2025" in lines[2] and "$250M" in lines[2] and "500.00%" in lines[2]
 
 
 def test_cash_position_tables():
@@ -202,7 +203,7 @@ def test_trend_summarises_the_chart_data():
     rendered = text.trend(result)
 
     assert rendered.title == "Trends"
-    assert "Quarterly revenue" in rendered.body and "2 quarters" in rendered.body and "$6,000,000,000" in rendered.body
+    assert "Quarterly revenue" in rendered.body and "2 quarters" in rendered.body and "$6,000M" in rendered.body
     assert "Quarterly EPS" in rendered.body and "$1.10" in rendered.body
     assert "⚠ no monthly prices" in rendered.body
 
@@ -245,7 +246,7 @@ def test_fundamentals_table_current_year_and_history():
     body = text.fundamentals(result).body
 
     assert text.fundamentals(result).title == "Fundamentals"
-    assert "FY2024" in body and "2024-12-31" in body and "$62,753,000,000" in body and "$10.33" in body
+    assert "FY2024" in body and "2024-12-31" in body and "$62,753M" in body and "$10.33" in body
     assert "Current FY2026: 3 of 4 quarters reported, EPS to date $7.79" in body
     assert "1 complete fiscal year(s); history insufficient (4 needed)" in body
 
@@ -255,3 +256,26 @@ def test_negative_per_share_figures_put_the_sign_before_the_dollar():
     body = text.cash_position(CashPositionResult("FY2025", "FY2024", "Q 2026-09-30", rows, ())).body
     line = next(line for line in body.splitlines() if line.startswith("Net cash per share"))
     assert line.split()[4:7] == ["-$43.14", "-$38.10", "-$5.04"] and "$-" not in body
+
+
+def test_large_dollar_amounts_are_shown_in_millions():
+    rows = (
+        CashRow("total_cash", "cash", 14_417_000_000.0, 14_591_000_000.0, -174_000_000.0, -0.0119, 11_058_000_000.0),
+        CashRow("net_cash", "cash", -40_419_000_000.0, None, None, None, None),
+        CashRow("other_current_liabilities", "working_capital", -1_000_000.0, 250_000.0, None, None, None),
+        CashRow("shares_outstanding", "cash", 936_952_129.0, None, None, None, None),
+    )
+    body = text.cash_position(CashPositionResult("FY2025", "FY2024", None, rows, ())).body
+    split = [re.split(r"\s{2,}", line.strip()) for line in body.splitlines() if line.strip()]
+    cells = {parts[0]: parts[1:] for parts in split}
+
+    assert cells["Total cash"][:3] == ["$14,417M", "$14,591M", "-$174M"]
+    assert cells["Net cash"][0] == "-$40,419M"
+    assert cells["Other current liabilities"][:2] == ["-$1M", "$250,000"]  # under a million keeps whole dollars
+    assert cells["Shares outstanding"][0] == "936,952,129"  # counts are not money
+
+
+def test_half_a_million_rounds_up():
+    rows = (CashRow("total_cash", "cash", 65_144_500_000.0, -2_500_000.0, None, None, None),)
+    body = text.cash_position(CashPositionResult("FY2025", "FY2024", None, rows, ())).body
+    assert "$65,145M" in body and "-$3M" in body  # half up, as financial readers expect; not Python's half-to-even
