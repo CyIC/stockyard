@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Unit testing module for logging_config."""
+import io
 import logging
-import logging.config
+import os
+import sys
 import unittest
+from unittest import mock
 
-from warren_bot import logging_config
+from stockyard import logging_config
 
 
 class SetLoggingLevelTestCase(unittest.TestCase):
@@ -33,18 +36,29 @@ class SetLoggingLevelTestCase(unittest.TestCase):
         self.assertEqual(logging_config.set_logging_level("bogus"), logging.INFO)
 
 
-class LoggingDictConfigTestCase(unittest.TestCase):
-    """Ensure the dictConfig produces a working stdout stream."""
+class ConfigureLoggingTestCase(unittest.TestCase):
+    """configure_logging() is the only place logging is set up, and it never writes to stdout."""
 
-    def test_stdout_handler_resolves_to_writable_stream(self):
-        """Regression: a malformed 'stream' URI left the handler with a str (no .write)."""
-        logging.config.dictConfig(logging_config.LOGGING)
-        stream_handlers = [
-            handler for handler in logging.getLogger().handlers if isinstance(handler, logging.StreamHandler)
-        ]
-        self.assertTrue(stream_handlers, "expected a StreamHandler on the root logger")
-        for handler in stream_handlers:
-            self.assertTrue(hasattr(handler.stream, "write"), "handler stream must be a real file object")
+    def tearDown(self):
+        logging.getLogger().handlers.clear()
+
+    def test_records_go_to_stderr_not_stdout(self):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, "stdout", stdout), mock.patch.object(sys, "stderr", stderr):
+            logging_config.configure_logging()
+            logging.getLogger("stockyard.test").warning("hello")
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("hello", stderr.getvalue())
+
+    def test_level_comes_from_logging_level_env_var(self):
+        with mock.patch.dict(os.environ, {"LOGGING_LEVEL": "error"}):
+            logging_config.configure_logging()
+        self.assertEqual(logging.getLogger().level, logging.ERROR)
+
+    def test_level_defaults_to_info(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            logging_config.configure_logging()
+        self.assertEqual(logging.getLogger().level, logging.INFO)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 services:
-  warren-bot:
+  warren:
     build:
       context: .
       dockerfile: Dockerfile
@@ -8,8 +8,8 @@ services:
         BUILD_DATE: ${BUILD_DATE:-}
         VCS_REF: ${VCS_REF:-}
     
-    container_name: warren-bot-secure
-    hostname: warren-bot
+    container_name: warren-secure
+    hostname: warren
     
     # Security: Restart policy
     restart: unless-stopped
@@ -55,8 +55,6 @@ services:
       - DISCORD_PUBLIC_KEY=${DISCORD_PUBLIC_KEY:-}
       - LOGGING_LEVEL=${LOGGING_LEVEL:-INFO}
       - DEBUG_MODE=${DEBUG_MODE:-false}
-      - CLUB_INFO_FILE=/app/config/club_info.json
-      - CLUB_STOCKS_FILE=/app/config/club_stocks.csv
       # PYTHONPATH intentionally omitted: the venv on PATH resolves its own site-packages,
       # so this stays correct across Python minor-version changes (no hardcoded python3.13).
     
@@ -66,16 +64,6 @@ services:
     
     # Security: Volume mounts with restricted permissions
     volumes:
-      # Configuration files (read-only)
-      - type: bind
-        source: ./club_info.json
-        target: /app/config/club_info.json
-        read_only: true
-      - type: bind
-        source: ./club_stocks.csv
-        target: /app/config/club_stocks.csv
-        read_only: true
-      
       # Data persistence (read-write with restricted access)
       - type: bind
         source: ./data
@@ -92,7 +80,7 @@ services:
     
     # Security: Network configuration
     networks:
-      - warren-bot-internal
+      - stockyard-internal
     
     # Security: No host networking
     network_mode: bridge
@@ -102,7 +90,7 @@ services:
     
     # Security: Health check
     healthcheck:
-      test: [ "CMD", "/app/.venv/bin/python", "-c", "import warren_bot; import sys; sys.exit(0)" ]
+      test: [ "CMD", "/app/.venv/bin/python", "-c", "import stockyard; import sys; sys.exit(0)" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -119,7 +107,7 @@ services:
     # Security: Labels for monitoring and management
     labels:
       - "traefik.enable=false"  # Disable if using Traefik
-      - "com.docker.compose.service=warren-bot"
+      - "com.docker.compose.service=warren"
       - "security.policy=restricted"
       - "backup.enable=true"
       - "backup.path=/app/data"
@@ -131,7 +119,7 @@ secrets:
 
 # Security: Custom network with restricted access
 networks:
-  warren-bot-internal:
+  stockyard-internal:
     driver: bridge
     internal: false  # Set to true if no external network access needed
     ipam:

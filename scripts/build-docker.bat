@@ -1,11 +1,11 @@
 @echo off
-REM Warren Bot Docker Build Script for Windows
-REM This script builds the Warren Bot Docker image with proper tags
+REM Stockyard Docker Build Script for Windows
+REM This script builds the Stockyard Docker image with proper tags
 
 setlocal enabledelayedexpansion
 
 REM Configuration
-set IMAGE_NAME=warren-bot
+set IMAGE_NAME=stockyard
 for /f "tokens=3" %%i in ('findstr "^version = " pyproject.toml') do (
     set VERSION=%%i
     set VERSION=!VERSION:"=!
@@ -16,7 +16,7 @@ if "%DOCKER_REGISTRY%"=="" (
     set REGISTRY=%DOCKER_REGISTRY%
 )
 
-echo Building Warren Bot Docker Image
+echo Building Stockyard Docker Image
 echo Version: %VERSION%
 echo Image: %IMAGE_NAME%
 
@@ -41,7 +41,7 @@ docker images %IMAGE_NAME%
 
 REM Optional: Run a quick test
 echo Testing image...
-docker run --rm "%IMAGE_NAME%:latest" python -c "import warren_bot; print('Import test passed')"
+docker run --rm "%IMAGE_NAME%:latest" python -c "import stockyard; print('Import test passed')"
 if errorlevel 1 (
     echo Import test failed!
     exit /b 1

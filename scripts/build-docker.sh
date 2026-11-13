@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Warren Bot Docker Build Script
-# This script builds the Warren Bot Docker image with proper tags
+# Stockyard Docker Build Script
+# This script builds the Stockyard Docker image with proper tags
 
 set -e
 
 # Configuration
-IMAGE_NAME="warren-bot"
+IMAGE_NAME="stockyard"
 VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
 REGISTRY=${DOCKER_REGISTRY:-""}
 
@@ -16,7 +16,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Building Warren Bot Docker Image${NC}"
+echo -e "${GREEN}Building Stockyard Docker Image${NC}"
 echo "Version: $VERSION"
 echo "Image: $IMAGE_NAME"
 
@@ -37,7 +37,7 @@ docker images "$IMAGE_NAME" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}
 
 # Optional: Run a quick test
 echo -e "${YELLOW}Testing image...${NC}"
-if docker run --rm "$IMAGE_NAME:latest" python -c "import warren_bot; print('Import test passed')"; then
+if docker run --rm "$IMAGE_NAME:latest" python -c "import stockyard; print('Import test passed')"; then
     echo -e "${GREEN}Import test passed!${NC}"
 else
     echo -e "${RED}Import test failed!${NC}"

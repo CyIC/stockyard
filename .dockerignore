@@ -90,3 +90,6 @@ src/tests/
 images/
 # Dev container config (never needed in a production image)
 .devcontainer/
+
+# Deployment secrets
+secrets/

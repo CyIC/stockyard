@@ -47,3 +47,28 @@ Dec-31 assumption remains.
   intentionally left on raw frames.
 - Semiannual filers (2 periods/year) never satisfy the hard 4-quarter completeness rule and are
   explicitly out of scope until needed.
+## Amendment (2026-11-11, v1 design review)
+
+Independent review found that the original decision cannot be implemented against yfinance as written.
+The core decision (income-statement period-end is the single source of truth) stands; these parts
+change:
+
+- **Threshold.** yfinance reliably supplies about four annual statements (recorded 2026-11-11: MSFT 4;
+  IBM 5 with the oldest empty), so `sufficient_history` requires 4 Complete Fiscal Years, not 6. Growth
+  across n years spans n − 1 periods. Deeper history (SEC EDGAR backfill) is a later decision.
+- **Quarter-ends are derived** from the annual period-ends (−9, −6, −3 months; the in-progress year
+  continues +3, +6, +9, +12 months after the last period-end), because
+  `quarterly_financials` holds only about five quarters while EPS history is longer. Each announcement
+  is attributed to the latest derived quarter-end strictly before it and within 120 days; ties keep the
+  earliest; unattributable announcements are dropped with a warning.
+- **Fiscal-year rows are kept without complete EPS.** Revenue and net income per period-end are always
+  present; only EPS comparisons require a Complete Fiscal Year. A year with four quarters but no annual
+  statement yet is the Current Year "awaiting annual statement". The "sum of four quarters" revenue
+  fallback is dropped.
+- **Scope extends** to the balance sheet and cash flow (no synthetic `YYYY-12-31` annual rows built from
+  quarters) and to price windows (each fiscal year's high/low come from that fiscal year's daily bars).
+- **Location and shape.** The builder is `stockyard.data.fundamentals.aligned_annual_fundamentals(data,
+  as_of)` returning typed results, not `get_aligned_annual_fundamentals(ticker)` in
+  `yfinance_integration.py` returning DataFrames.
+
+Full specification: `docs/design/v1.md` §5.2.

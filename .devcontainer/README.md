@@ -12,12 +12,10 @@ pip-audit                # dependency vulnerabilities
 
 ## Things that are not obvious
 
-**Installed versions do not match `poetry.lock`.** `postCreate.sh` installs with pip, not
-`poetry install`. The root `Dockerfile` explains why: Poetry's lock resolver backtracks this
-dependency graph to pre-3.13 releases that publish no cp313 wheels, so a locked install on
-Python 3.13 builds numpy/pandas/scipy from source or fails. The production installer stage
-resolves with pip for the same reason. The lock is also currently about two years stale, so
-refreshing it is tracked work — until then the container runs newer packages than the lock.
+**Installed versions can differ from `poetry.lock`.** `postCreate.sh` installs with pip, not
+`poetry install`, to match the production image, which also resolves with pip. pip picks the
+newest versions `pyproject.toml` allows, so they can run ahead of the lock. The lock itself is
+current as of v1.0 and installs cleanly with `poetry install` on Python 3.13.
 
 **`.tox/` is a named volume, not the host directory.** The host is Windows and its `.tox/`
 contains Windows launchers Linux cannot execute. The volume shadows it, so the host copy is
@@ -36,8 +34,10 @@ graphical agent is reachable. Git pushes still need your SSH key: Dev Containers
 host's SSH agent, so start one on the host (`ssh-agent` + `ssh-add`) before opening the
 container, or push from the host.
 
-**No `.env` means the bot will not start.** Tests do not need it; `python -m warren_bot` does.
-`WARREN_DATA_DIR` is preset to `./data`, and `MPLBACKEND=Agg` keeps chart rendering headless.
+**Warren needs `DISCORD_TOKEN` in the environment.** Stockyard does not read `.env` itself (only Docker
+Compose does), so `export DISCORD_TOKEN=...` in the terminal before `warren` or `python -m stockyard.bot`. The
+CLI (`stockyard report MSFT`) and the tests need no token. `STOCKYARD_DATA_DIR` is preset to `./data` (the
+same-day cache), and `MPLBACKEND=Agg` keeps chart rendering headless.
 
 **Docker is the host daemon.** `docker` and `docker compose` target the host, so images you
 build are visible on the host and `scripts/build-secure.sh` works. This is host-daemon

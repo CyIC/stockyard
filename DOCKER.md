@@ -1,221 +1,144 @@
-# Docker Deployment Guide for Warren Bot
+# Docker Deployment Guide for Stockyard
 
-This guide covers how to build and run Warren Bot using Docker.
+This guide covers building the Stockyard image and running Warren, the Discord bot, in a container, either
+self-hosted with Docker Compose or on DigitalOcean App Platform. The same image also runs the `stockyard` CLI.
+
+The image is Chainguard distroless Python: non-root (uid 65532), no shell, and its entry point is the
+virtualenv's Python, so the command is the arguments to `python` (the default is `-m stockyard.bot`).
 
 ## Prerequisites
 
 - Docker Engine 20.10+
 - Docker Compose 2.0+ (optional, for easier deployment)
-- Discord Bot Token
+- A Discord bot token (for Warren; the CLI needs none)
 
 ## Quick Start with Docker Compose (Recommended)
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/CyIC/warren_bot.git
-   cd warren_bot
+   git clone https://github.com/CyIC/stockyard.git
+   cd stockyard
    ```
 
 2. **Set up environment variables**
    ```bash
    cp .env.template .env
-   # Edit .env file with your Discord bot token
+   # Edit .env and set DISCORD_TOKEN
    ```
 
-3. **Prepare configuration files**
+3. **Run with Docker Compose**
    ```bash
-   # Copy and customize your club data files
-   cp club_info_template.json club_info.json
-   cp club_stocks.csv club_stocks.csv  # if you have existing data
+   docker compose up -d
    ```
+   For the hardened configuration (read-only root filesystem, dropped capabilities, the token as a Docker
+   secret in `secrets/discord_token.txt`, see `secrets/README.md`) use `docker compose -f docker-compose.secure.yml up -d`.
 
-4. **Run with Docker Compose**
+4. **Check logs**
    ```bash
-   docker-compose up -d
-   ```
-
-5. **Check logs**
-   ```bash
-   docker-compose logs -f warren-bot
+   docker compose logs -f warren
    ```
 
 ## Manual Docker Build and Run
 
-### Build the Image
-
 ```bash
-# Build the Docker image
-docker build -t warren-bot:latest .
-```
+docker build -t stockyard:latest .
 
-### Run the Container
-
-```bash
-# Run the container with environment variables
 docker run -d \
-  --name warren-bot \
+  --name warren \
   --restart unless-stopped \
   -e DISCORD_TOKEN="your_discord_bot_token_here" \
-  -e LOGGING_LEVEL="INFO" \
-  -v $(pwd)/club_info.json:/app/club_info.json:ro \
-  -v $(pwd)/club_stocks.csv:/app/club_stocks.csv:ro \
   -v $(pwd)/data:/app/data \
-  -v $(pwd)/logs:/app/logs \
-  warren-bot:latest
+  stockyard:latest
+```
+
+### Running the CLI in the container
+
+```bash
+docker run --rm stockyard:latest -m stockyard report MSFT
+docker run --rm stockyard:latest -m stockyard risk-reward MSFT --json
+docker run --rm -v $(pwd)/charts:/charts stockyard:latest -m stockyard trend MSFT --charts /charts
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable             | Required | Default           | Description                                 |
-|----------------------|----------|-------------------|---------------------------------------------|
-| `DISCORD_TOKEN`      | Yes      | -                 | Discord bot token                           |
-| `DISCORD_APP_ID`     | No       | -                 | Discord application ID                      |
-| `DISCORD_PUBLIC_KEY` | No       | -                 | Discord public key                          |
-| `LOGGING_LEVEL`      | No       | INFO              | Logging level (DEBUG, INFO, WARNING, ERROR) |
-| `DEBUG_MODE`         | No       | false             | Enable debug mode                           |
-| `CLUB_INFO_FILE`     | No       | ./club_info.json  | Path to club info file                      |
-| `CLUB_STOCKS_FILE`   | No       | ./club_stocks.csv | Path to club stocks file                    |
+| Variable             | Required          | Default (image) | Description                                                      |
+|----------------------|-------------------|-----------------|------------------------------------------------------------------|
+| `DISCORD_TOKEN`      | Yes, or the file  | -               | Discord bot token                                                |
+| `DISCORD_TOKEN_FILE` | Yes, or the token | -               | Path to a file holding the token, e.g. `/run/secrets/discord_token` |
+| `STOCKYARD_DATA_DIR` | No                | `/app/data`     | Writable directory for the same-day market-data cache            |
+| `LOGGING_LEVEL`      | No                | `INFO`          | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`                |
+
+The README's [Configuration](README.md#configuration) section lists every variable, including those kept in
+`.env.template` for deployment tooling but not read by Stockyard.
 
 ### Volume Mounts
 
-| Host Path           | Container Path         | Purpose                          |
-|---------------------|------------------------|----------------------------------|
-| `./club_info.json`  | `/app/club_info.json`  | Club configuration (read-only)   |
-| `./club_stocks.csv` | `/app/club_stocks.csv` | Stock portfolio data (read-only) |
-| `./data`            | `/app/data`            | Persistent data storage          |
-| `./logs`            | `/app/logs`            | Log files                        |
+| Host Path | Container Path | Purpose                                                                 |
+|-----------|----------------|-------------------------------------------------------------------------|
+| `./data`  | `/app/data`    | Same-day cache of Yahoo Finance responses (`cache/<TICKER>.json`); safe to delete |
+
+Logs go to stderr as JSON, so read them with `docker logs`. The compose files also mount or `tmpfs` an
+`/app/logs` directory, which v1 does not write to.
+
+### Health Check
+
+The Dockerfile and both compose files check that the `stockyard` package imports in the container's
+virtualenv. A test (`src/tests/test_deployment.py`) runs each check so they cannot drift.
+
+## DigitalOcean App Platform
+
+`.do/app.yml` (and the deploy-button spec `.do/deploy.yaml`) builds the Dockerfile and runs Warren as a
+**worker** (it has no HTTP port). On App Platform:
+
+- Set `DISCORD_TOKEN` as an encrypted (SECRET) environment variable on the app; the build fails to start
+  without it.
+- `STOCKYARD_DATA_DIR` is `/tmp/stockyard`, because App Platform has no volumes and the non-root user cannot
+  create `/app/data`. The cache is lost on each restart, which only costs a fresh fetch.
+- `app.yml` deploys on every push to `main`.
+- The spec in the repository does not change a running app by itself; apply it with
+  `doctl apps update <app-id> --spec .do/app.yml` or in the DigitalOcean dashboard.
 
 ## Management Commands
 
-### View Logs
-
 ```bash
-# Docker Compose
-docker-compose logs -f warren-bot
+# Logs
+docker compose logs -f warren          # or: docker logs -f warren
 
-# Docker
-docker logs -f warren-bot
+# Stop
+docker compose down                    # or: docker stop warren && docker rm warren
+
+# Update
+git pull
+docker compose build && docker compose up -d
 ```
 
-### Stop the Bot
-
-```bash
-# Docker Compose
-docker-compose down
-
-# Docker
-docker stop warren-bot
-docker rm warren-bot
-```
-
-### Update the Bot
-
-```bash
-# Docker Compose
-docker-compose down
-docker-compose pull  # if using pre-built image
-docker-compose build  # if building locally
-docker-compose up -d
-
-# Docker
-docker stop warren-bot
-docker rm warren-bot
-docker build -t warren-bot:latest .
-# Run command again
-```
-
-### Access Container Shell (for debugging)
-
-```bash
-# Docker Compose
-docker-compose exec warren-bot /bin/bash
-
-# Docker
-docker exec -it warren-bot /bin/bash
-```
+The runtime image has no shell, so `docker exec ... /bin/bash` does not work. To debug, raise
+`LOGGING_LEVEL=DEBUG` and restart, or run a one-off command such as
+`docker run --rm stockyard:latest -m stockyard past-eps MSFT -v`.
 
 ## Security Considerations
 
-1. **Environment Variables**: Never commit your `.env` file with real tokens
-2. **File Permissions**: The container runs as a non-root user for security
-3. **Network**: The bot doesn't expose any ports by default
-4. **Updates**: Regularly update the base image and dependencies
+1. **Secrets**: `.env` and everything in `secrets/` except its README are gitignored and kept out of the
+   build context; prefer `DISCORD_TOKEN_FILE` with a Docker secret.
+2. **Non-root**: The image runs as uid 65532 with no shell.
+3. **Network**: Warren makes outbound connections to Discord and Yahoo Finance only; it exposes no ports.
+4. **Updates**: Rebuild regularly to pick up base-image and dependency fixes; pin base images by digest
+   (see the Dockerfile's `PYTHON_DEV_IMAGE` / `PYTHON_RUNTIME_IMAGE` build arguments) for reproducible builds.
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Bot won't start**
-    - Check Discord token is valid
-    - Verify environment variables are set correctly
-    - Check logs for specific error messages
-
-2. **Permission errors**
-    - Ensure volume mount directories exist and are readable
-    - Check file ownership if mounting existing files
-
-3. **Memory issues**
-    - Adjust resource limits in docker-compose.yml
-    - Monitor container memory usage: `docker stats warren-bot`
-
-### Debug Mode
-
-To run in debug mode:
-
-```bash
-# Add to .env file
-DEBUG_MODE=true
-LOGGING_LEVEL=DEBUG
-
-# Restart container
-docker-compose down && docker-compose up -d
-```
-
-## Production Deployment
-
-For production deployment, consider:
-
-1. **Resource Limits**: Set appropriate CPU and memory limits
-2. **Health Checks**: Configure proper health checks
-3. **Monitoring**: Set up log aggregation and monitoring
-4. **Backup**: Regular backup of persistent data
-5. **Updates**: Automated deployment pipeline
-
-### Example Production docker-compose.yml
-
-```yaml
-version: '3.8'
-services:
-  warren-bot:
-    build: .
-    restart: unless-stopped
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
-      - LOGGING_LEVEL=INFO
-    volumes:
-      - ./prod-data:/app/data
-      - ./prod-logs:/app/logs
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-```
+1. **Warren exits at start-up saying no token was found**: set `DISCORD_TOKEN`, or `DISCORD_TOKEN_FILE`
+   pointing at a readable file.
+2. **Permission errors writing the cache**: the data directory must be writable by the container's user
+   (uid 1000 in `docker-compose.yml`, 65532 in the image and `docker-compose.secure.yml`), e.g.
+   `sudo chown 65532:65532 data`, or point `STOCKYARD_DATA_DIR` at a writable path.
+3. **Lookups fail with an upstream error**: Yahoo Finance is unreachable or rate-limiting; try again later.
+4. **Memory issues**: adjust the resource limits in the compose file; monitor with `docker stats warren`.
 
 ## Multi-Architecture Support
 
-The Dockerfile supports multiple architectures. To build for different platforms:
-
 ```bash
-# Build for multiple architectures
-docker buildx build --platform linux/amd64,linux/arm64 -t warren-bot:latest .
-
-# Build for Raspberry Pi
-docker buildx build --platform linux/arm/v7 -t warren-bot:arm -.
+docker buildx build --platform linux/amd64,linux/arm64 -t stockyard:latest .
+```

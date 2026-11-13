@@ -15,29 +15,27 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![Apache License][license-shield]][license-url]
-[![Python: 3.11][python-shield]][python-url]
+[![Python: 3.13][python-shield]][python-url]
 [![OSS Lifecycle][oss-shield]][oss-url]
 
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-    <a href="https://github.com/CyIC/warren_bot">
+    <a href="https://github.com/CyIC/stockyard">
         <img src="images/logo.png" alt="Logo" width="80" height="80">
     </a>
 
-<h3 align="center">Warren Chatbot</h3>
+<h3 align="center">Stockyard v1.0.0</h3>
 
   <p align="center">
-    An Investment Club chatbot
+    Stock Selection Guide research for the Cypress Investment Club, from the command line or Discord
     <br />
-    <a href="https://github.com/github_username/repo_name"><strong>Explore the docs »</strong></a>
+    <a href="docs/design/v1.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/github_username/repo_name">View Demo</a>
+    <a href="https://github.com/CyIC/stockyard/issues">Report Bug</a>
     ·
-    <a href="https://github.com/CyIC/warren_bot/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/CyIC/warren_bot/issues">Request Feature</a>
+    <a href="https://github.com/CyIC/stockyard/issues">Request Feature</a>
   </p>
 </div>
 
@@ -59,7 +57,14 @@
         <li><a href="#installation">Installation</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
+    <li>
+      <a href="#usage">Usage</a>
+      <ul>
+        <li><a href="#command-line">Command line</a></li>
+        <li><a href="#discord-warren">Discord (Warren)</a></li>
+      </ul>
+    </li>
+    <li><a href="#calculation-notes">Calculation Notes</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
@@ -72,62 +77,66 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+Stockyard builds the sections of a BetterInvesting-style **Stock Selection Guide** (SSG) for any ticker
+from Yahoo Finance data: past sales and EPS, the record of stock prices, P/E, payout and yield, trends,
+cash position, revenue and earnings growth, and the risk/reward evaluation with buy/maybe/sell zones.
 
-Warren is a chatbot for investment clubs to analyze stocks, report on club fundamentals and more.
+One core library, two front ends:
+* **`stockyard`**, a command-line tool for quick lookups in a terminal and for automation. `--json` gives
+  AI agents and scripts a versioned, machine-readable report without spending LLM tokens on scraping.
+  See [docs/agents.md](docs/agents.md).
+* **Warren**, the club's Discord bot, which posts the same report and charts in a channel.
 
-With Warren, you can:
-* Conduct 5 year stock return analysis on publically traded companies.
-* Track and report on club portfolio performance.
+Every figure is computed for fiscal years aligned on the company's own period-ends, as of a stated New York
+date. Missing data never becomes a silent zero or a crash: the figure is `null` (`n/a` in text) with a
+warning saying what was needed.
+
+Stockyard is research and education for the club, not investment advice.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
 
-* [Python3.11](https://www.python.org/downloads/release/python-3110/)
-* [Pandas](https://pandas.pydata.org/)
-* [NumPy](https://numpy.org/)
-* [PrettyTables](https://github.com/jazzband/prettytable)
-* [requests](https://docs.python-requests.org/en/latest/index.html)
+* [Python 3.13](https://www.python.org/)
+* [yfinance](https://github.com/ranaroussi/yfinance)
+* [pandas](https://pandas.pydata.org/) and [NumPy](https://numpy.org/)
 * [matplotlib](https://matplotlib.org/)
-* [mplfinance](https://github.com/matplotlib/mplfinance)
-* [Discord.py][discordpy-url]
+* [discord.py][discordpy-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Folder Structure
 ```
 .
-├-- .do                                     # Digital Ocean Actions folder
-├-- .github                                 # Github Actions folder
-├-- src/                                
-|   ├-- tests/                              # unit tests        
-|   └-- warren_bot/                         # main module for application
-|       ├-- resources/
-|       ├-- __init__.py                     # module init
-|       ├-- __main__.py                     # module main
-|       ├-- alphavantage.py                 # file for alphavantage transactions
-|       ├-- analysis.py                     # file for quant analysis methods
-|       ├-- logging_config.py               # central module for controlling logging
-|       ├-- portfolio_analysis.py           # file for portfolio analysis function
-|       ├-- stock_analysis.py               # file for stock analysis function
-|       └-- utilites.py                     # file for general utility functions
-├-- .bumpversion.cfg                        # bumpversion configuration for version incrementation
-├-- .gitignore                              # Typical gitignore file
-├-- bot_config.template.info                # INI template for bot_config (remove .template for function)
-├-- CHANGELOG.md                            # running record (human readable) of version changes
-├-- club_info_template.json                 # JSON template for club/portfolio info
-├-- club_stocks.csv                         # CSV template for club/portfolio buy and sell of stocks
-├-- CONTRIBUTING.md                         # Directions and standards for contributing to this application
-├-- dchat.py                                # Discord chatbot entrypoint
-├-- humans.txt                              # Running list of all contributors
-├-- LICENSE                                 # Source of truth for required LICENSE
-├-- pyproject.toml                          # Python toml setup configurations
-├-- README.md                               # This file
-├-- setup.py                                # Backwards compatable python setup script
-├-- stocks.pkl                              # Pickle file of latest stocks download (prevent extra calls to 
-|                                           # apvantage API)
-└-- tox.ini                                 # configuration file for testing via tox
+├-- .do/                          # DigitalOcean deployment config
+├-- .github/workflows/            # GitHub Actions
+├-- docs/
+|   ├-- adr/                      # architecture decision records
+|   └-- design/                   # v1 design and implementation plan
+├-- scripts/
+|   ├-- record_raw_fixtures.py    # record raw yfinance responses as test fixtures
+|   └-- build-*.sh / .bat         # Docker build helpers
+├-- src/
+|   ├-- stockyard/
+|   |   ├-- data/                 # fetch (yfinance), same-day cache, ticker validation, fiscal-year alignment
+|   |   ├-- research/             # Stock Selection Guide definitions, sections and build_report
+|   |   ├-- render/               # text, Discord, JSON and chart renderers
+|   |   ├-- bot/                  # Warren, the Discord bot (console script `warren`)
+|   |   ├-- cli.py                # the command line (console script `stockyard`)
+|   |   ├-- clock.py              # the single wall-clock read (New York date)
+|   |   ├-- config.py             # settings from environment variables
+|   |   ├-- logging_config.py     # logging to stderr
+|   |   ├-- report_warning.py     # structured warnings
+|   |   └-- utilities.py          # data-directory path, Discord token
+|   └-- tests/                    # pytest suite; fixtures/ holds recorded yfinance responses
+├-- .env.template                 # environment variables (copy to .env)
+├-- CHANGELOG.md                  # human-readable record of version changes
+├-- CONTEXT.md                    # glossary of domain terms
+├-- CONTRIBUTING.md               # contribution guidelines
+├-- DOCKER.md                     # container build and deployment
+├-- Dockerfile, docker-compose*.yml
+├-- pyproject.toml / poetry.lock  # package metadata and locked dependencies
+└-- tox.ini                       # test, lint and type-check environments
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -140,30 +149,47 @@ instructions.
 
 ### Prerequisites 
 
-This bot is run off of a Digital Ocean droplet and constantly monitors a single Discord server. In order to run this bot
-locally, you will need [Python][python-url] and [Poetry][poetry-url] installed. All other dependencies are installed 
-using poetry.
+You need [Python][python-url] 3.13 and [Poetry][poetry-url]; Poetry installs everything else. The CLI needs nothing
+more. Warren also needs a Discord bot token. In production Warren runs in a container, self-hosted with Docker
+Compose or on DigitalOcean App Platform (`.do/`); see [DOCKER.md](./DOCKER.md).
 
 ### Installation
 
-1. Get a free API Key at [https://www.alphavantage.co/](https://www.alphavantage.co/)
-2. Clone the repo
+1. Clone the repo
    ```sh
-   git clone https://github.com/CyIC/warren_bot.git
+   git clone https://github.com/CyIC/stockyard.git
+   cd stockyard
    ```
-3. Move into the repo directory
-   ```shell
-   cd warren_bot
-   ```
-3. Install Python dependencies
+2. Install Python dependencies
    ```sh
    poetry install
    ```
-4. Enter your Alphavantage API in `bot_config.ini`
-   ```ini
-   [alphavantage]
-   key = `ENTER YOUR API`
+3. Create your configuration from the template and fill in your values (see [Configuration](#configuration))
+   ```sh
+   cp .env.template .env
    ```
+
+Market data comes from Yahoo Finance via yfinance, which needs no API key.
+
+### Configuration
+
+Stockyard is configured with environment variables. [`.env.template`](./.env.template) lists them all;
+copy it to `.env`. Docker Compose reads `.env` automatically. For local runs, set the variables in your
+shell, e.g. `export LOGGING_LEVEL=DEBUG` (bash) or `$env:LOGGING_LEVEL = "DEBUG"` (PowerShell).
+
+| Variable | Used by | Default | Purpose |
+|---|---|---|---|
+| `STOCKYARD_DATA_DIR` | bot, CLI | current directory (`/app/data` in Docker) | Writable directory for the same-day market-data cache (`cache/<TICKER>.json`). Charts go to a per-request temporary directory (bot) or `--charts DIR` (CLI). |
+| `LOGGING_LEVEL` | bot, CLI | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`. Logs go to stderr, so CLI output on stdout stays clean. |
+| `DISCORD_TOKEN` | bot | — | The Discord bot token. |
+| `DISCORD_TOKEN_FILE` | bot | — | Path to a file holding the token (e.g. a Docker/Swarm secret at `/run/secrets/discord_token`). Used when `DISCORD_TOKEN` is not set. |
+
+The bot resolves its token from `DISCORD_TOKEN`, then `DISCORD_TOKEN_FILE`, then a `[discord] token` entry in
+a local `bot_config.ini`; if none is found it exits with a message saying so. The CLI needs no token.
+
+**Upgrading from Warren Bot 0.1:** `WARREN_DATA_DIR` is now `STOCKYARD_DATA_DIR`, and `LOGGING` is now
+`LOGGING_LEVEL`. The old names are not read. `DEBUG_MODE`, `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY` and
+`FRED_KEY` remain in the template for deployment tooling but are not read by stockyard v1.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -171,9 +197,115 @@ using poetry.
 
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+### Command line
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+```sh
+stockyard report MSFT                 # every section, as text
+stockyard past-eps MSFT               # one section
+stockyard report MSFT --json          # stockyard.report/1 JSON for scripts and agents
+stockyard trend MSFT --charts charts/ # also write PNG charts into charts/
+stockyard --help
+```
+
+Run it as `poetry run stockyard ...` or `python -m stockyard ...` if the script isn't on your PATH.
+
+| Command | Section |
+|---|---|
+| `report` | all of the below |
+| `fundamentals` | aligned fiscal years: revenue, net income, reported EPS; current-year progress |
+| `past-sales` | past sales records, growth and CAGR |
+| `past-eps` | past EPS, growth and CAGR |
+| `record` | record of stock: fiscal-year high/low, P/E at high and low, payout, high yield |
+| `trend` | quarterly revenue and EPS, monthly high/low prices |
+| `cash` | cash position: cash, debt and working capital, two fiscal years and the latest quarter |
+| `revenue-growth` | revenue growth, dividends, current P/E and Lynch's dividend-adjusted ratio |
+| `earnings-growth` | net income year over year |
+| `risk-reward` | forecast high, low estimates, zones, up/down ratios and price target |
+
+Options for every command: `--json`, `--charts DIR` (writes `trend_*.png` / `risk_*.png` for the sections that
+have charts), `--no-cache` (skip the same-day cache), `-v` (debug logging on stderr).
+
+Only the result is written to stdout; logs and errors go to stderr. Exit codes: `0` success (warnings may be
+present), `1` internal error, `2` usage error or invalid ticker, `3` no data for the ticker, `4` Yahoo Finance
+failed. The JSON contract is described in [docs/agents.md](docs/agents.md).
+
+Example (`stockyard past-eps IBM`, recorded data):
+
+```
+IBM — Stock Selection Guide as of 2026-11-11 (yfinance)
+
+== Past EPS ==
+FY2021                 $9.97
+FY2022                 $9.12
+FY2023                 $9.61
+FY2024                $10.33
+FY2025                $11.57
+
+Recent two-year average (FY2024–FY2025)                $10.95
+Oldest two-year average (FY2021–FY2022)                 $9.55
+% increase in earnings                                 14.72%
+Compound annual growth (FY2021→FY2025)                  3.79%
+```
+
+### Discord (Warren)
+
+```sh
+poetry run warren        # or: python -m stockyard.bot
+```
+
+| Command | What it does |
+|---|---|
+| `!stock_report TICKER` (or `!sr TICKER`) | posts the full report with trend and risk/reward charts |
+| `!help` | lists the commands |
+
+Warren builds the report off Discord's event loop, so one slow lookup doesn't stall the bot.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Calculation Notes
+
+The full definitions, minimums and edge cases are in [design §5.2, §5.6 and §5.7](docs/design/v1.md); terms
+are in [CONTEXT.md](./CONTEXT.md). In brief:
+
+**Fiscal years.** Rows are the company's annual statement period-ends, labelled `FY####`. Quarterly EPS
+announcements are attributed to the quarter they report, and a year whose four quarters are all present is
+a *Complete Fiscal Year*. EPS-based figures use complete years only; revenue and income use every annual
+statement. Each year's prices come from its own window, the trading days after the prior period-end up to
+its own. With fewer than 4 complete fiscal years (recent IPOs) the history is *insufficient*: the EPS
+growth figures that need more years and the risk/reward forecast are `n/a`, with warnings saying why.
+
+| Figure | How it is calculated |
+|---|---|
+| CAGR | `(last / first)^(1/(n−1)) − 1` over n years; `n/a` if the first year is ≤ 0 or the last is < 0 |
+| % increase (pair) | average of the two most recent years versus the two oldest years |
+| TTM EPS | sum of the last four reported quarterly EPS |
+| Current P/E | present price ÷ TTM EPS; `n/a` if TTM EPS ≤ 0 |
+| P/E at high / low | fiscal-year high ÷ that year's EPS, fiscal-year low ÷ EPS; years with EPS ≤ 0 are left out of the averages |
+| % payout, high yield | dividends per share ÷ EPS; dividends per share ÷ fiscal-year low |
+| Dividends per share | the dividends actually paid per share in the period, from the price history (fiscal-year window, or the last 365 days for TTM) |
+| Dividend yield | TTM dividends per share ÷ present price |
+| Forecast high | average P/E at high × TTM EPS projected five years ahead by a straight-line fit. Labelled "Forecast high (avg PE × projected EPS)". |
+| Low estimates | four, each shown on its own: the five-year straight-line trend of daily lows; the average of fiscal-year lows; the lowest daily low in five years; and dividend support (TTM dividends ÷ highest fiscal-year high yield) |
+| Zones | the range from a low estimate to the forecast high, split **25 % buy / 50 % maybe / 25 % sell**; the present price is placed in one of them |
+| Up/down ratio | `(forecast high − price) ÷ (price − low)`; the top of the buy zone is 3 to 1 |
+| Price target | forecast high ÷ present price − 1 |
+| Cash position | total cash = cash + short-term investments; net cash = total cash − long-term debt; working capital = current assets − current liabilities. Items Yahoo omits (often a company with no debt) count as zero, with a warning. |
+
+**Lynch's dividend-adjusted ratio.** The Revenue Growth section reports **Peter Lynch's dividend-adjusted
+PEG ratio**, from *One Up on Wall Street* (1989):
+
+```
+(EPS growth % + dividend yield %) ÷ current P/E
+```
+
+with both percentages as whole numbers and EPS growth taken as the EPS CAGR. For example, 12 % growth, a 2 %
+yield and a P/E of 20 give (12 + 2) ÷ 20 = 0.7. Lynch's reading: below 1 is poor, 1.5 is okay, and 2 or more is
+what you're looking for. It appears in the Revenue Growth section of the text and Discord reports (labelled
+"Lynch dividend-adjusted ratio") and as `lynch_ratio` in the JSON. It replaces the 0.1 formula, which mixed
+units.
+
+All prices are split-adjusted but not dividend-adjusted, so historical highs and lows match what was quoted
+at the time, apart from splits.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -207,22 +339,21 @@ This project uses libraries and software listed in the [Built With](README.md#bu
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/CyIC/warren_bot.svg?style=for-the-badge
-[contributors-url]: https://github.com/CyIC/warren_bot/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/CyIC/warren_bot.svg?style=for-the-badge
-[forks-url]: https://github.com/CyIC/warren_bot/network/members
-[stars-shield]: https://img.shields.io/github/stars/CyIC/warren_bot.svg?style=for-the-badge
-[stars-url]: https://github.com/CyIC/warren_bot/stargazers
-[issues-shield]: https://img.shields.io/github/issues/CyIC/warren_bot.svg?style=for-the-badge
-[issues-url]: https://github.com/CyIC/warren_bot/issues
-[license-shield]: https://img.shields.io/github/license/CyIC/warren_bot.svg?style=for-the-badge
-[license-url]: https://github.com/CyIC/warren_bot/blob/master/LICENSE.md
-[product-screenshot]: images/screenshot.png
+[contributors-shield]: https://img.shields.io/github/contributors/CyIC/stockyard.svg?style=for-the-badge
+[contributors-url]: https://github.com/CyIC/stockyard/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/CyIC/stockyard.svg?style=for-the-badge
+[forks-url]: https://github.com/CyIC/stockyard/network/members
+[stars-shield]: https://img.shields.io/github/stars/CyIC/stockyard.svg?style=for-the-badge
+[stars-url]: https://github.com/CyIC/stockyard/stargazers
+[issues-shield]: https://img.shields.io/github/issues/CyIC/stockyard.svg?style=for-the-badge
+[issues-url]: https://github.com/CyIC/stockyard/issues
+[license-shield]: https://img.shields.io/github/license/CyIC/stockyard.svg?style=for-the-badge
+[license-url]: https://github.com/CyIC/stockyard/blob/main/LICENSE.md
 [lint-flake8-shield]: https://img.shields.io/badge/linting-flake8-yellowgreen?style=for-the-badge
 [flake8-url]: https://flake8.pycqa.org/en/latest/
 [discordpy-url]: https://discordpy.readthedocs.io/en/stable/
-[python-shield]: https://img.shields.io/python/required-version-toml?style=for-the-badge&tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FCyIC%2Fwarren_bot%2Fblob%2Fmain%2Fpyproject.toml
+[python-shield]: https://img.shields.io/python/required-version-toml?style=for-the-badge&tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FCyIC%2Fstockyard%2Fblob%2Fmain%2Fpyproject.toml
 [python-url]: https://www.python.org/
 [poetry-url]: https://python-poetry.org
-[oss-shield]: https://img.shields.io/osslifecycle/CyIC/warren_bot?style=for-the-badge
+[oss-shield]: https://img.shields.io/osslifecycle/CyIC/stockyard?style=for-the-badge
 [oss-url]: https://github.com/Netflix/osstracker/tree/master

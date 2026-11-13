@@ -1,5 +1,5 @@
 {
-    "name": "warren_bot",
+    "name": "stockyard",
     "build": {
         "dockerfile": "Dockerfile",
         // Context is .devcontainer/ only. The Dockerfile COPYs nothing from the repo, so a
@@ -29,8 +29,8 @@
         // Mirrors tox.ini's setenv and pyproject's pytest pythonpath, so ad-hoc `python`
         // and `pytest` invocations resolve the src/ layout the same way tox does.
         "PYTHONPATH": "${containerWorkspaceFolder}/src",
-        // utilities.data_path() reads this to decide where charts and reports are written.
-        "WARREN_DATA_DIR": "${containerWorkspaceFolder}/data"
+        // stockyard.config.Settings reads this: the same-day market-data cache goes in data/cache/.
+        "STOCKYARD_DATA_DIR": "${containerWorkspaceFolder}/data"
     },
 
     "remoteUser": "vscode",

@@ -1,7 +1,7 @@
 services:
-  warren-bot:
+  warren:
     build: .
-    container_name: warren-bot
+    container_name: warren
     restart: unless-stopped
     user: "1000:1000"
     
@@ -10,14 +10,12 @@ services:
     
     # Mount volumes for persistent data and configuration
     volumes:
-      - ./club_info.json:/app/club_info.json:ro
-      - ./club_stocks.csv:/app/club_stocks.csv:ro
       - ./data:/app/data
       - ./logs:/app/logs
     
     # Health check
     healthcheck:
-      test: [ "CMD", "python", "-c", "import warren_bot; warren_bot.health_check()" ]
+      test: [ "CMD", "/app/.venv/bin/python", "-c", "import stockyard, sys; sys.exit(0)" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -40,4 +38,4 @@ services:
 # Networks (optional)
 networks:
   default:
-    name: warren-bot-network
+    name: stockyard-network

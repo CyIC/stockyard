@@ -133,6 +133,8 @@ celerybeat.pid
 
 # Environments
 .env
+# STOCKYARD_DATA_DIR default in .env.template (market-data cache, charts)
+/data/
 .venv
 env/
 venv/
@@ -248,3 +250,8 @@ fabric.properties
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
 
+
+# Deployment secrets (see secrets/README.md); only the README and .gitkeep are tracked
+secrets/*
+!secrets/README.md
+!secrets/.gitkeep

@@ -1,0 +1,47 @@
+# -*- coding: utf-8 -*-
+# pylint: disable=C0116, W0511
+"""Utilities shared by stockyard's front ends: the data-directory path and the Discord token."""
+import configparser
+import os
+
+from stockyard.config import Settings
+
+
+def data_path(*parts) -> str:
+    """Resolve a writable output path under the configured data directory.
+
+    Uses Settings.data_dir (STOCKYARD_DATA_DIR, default: current working directory) so
+    file output works on a read-only container root where only a mounted data volume is
+    writable. Ensures the returned path's parent directory exists.
+
+    :param parts: path components joined under the data dir (e.g. "charts", "AAPL_chart.png")
+    :return: path string with its parent directory created
+    """
+    path = os.path.join(Settings.from_env().data_dir, *parts)
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    return path
+
+
+def load_discord_token() -> str:
+    """Resolve the Discord bot token from the environment, a secret file, or the legacy INI.
+
+    Resolution order (first match wins):
+      1. DISCORD_TOKEN environment variable (e.g. --env-file .env)
+      2. the file named by DISCORD_TOKEN_FILE (Docker/Swarm secret at /run/secrets/...)
+      3. the [discord] token in bot_config.ini in the working directory (local dev fallback)
+
+    :return: the Discord bot token
+    :raises KeyError: if no token is found in any source
+    """
+    token = os.environ.get("DISCORD_TOKEN")
+    if token:
+        return token
+    token_file = os.environ.get("DISCORD_TOKEN_FILE")
+    if token_file:
+        with open(token_file, encoding="utf-8") as handle:
+            return handle.read().strip()
+    parser = configparser.ConfigParser()
+    parser.read("bot_config.ini")
+    return parser["discord"]["token"]

@@ -4,10 +4,10 @@ docker-lint:
     docker run --rm -i hadolint/hadolint < Dockerfile
 
 docker-build:
-    docker buildx build -t warrenbot:latest .
+    docker buildx build -t stockyard:latest .
 
 docker-run: docker-build
-    docker run -it --rm --env-file ./.env warrenbot:latest
+    docker run -it --rm --env-file ./.env stockyard:latest
 
 clean:
     docker system prune -af --volumes

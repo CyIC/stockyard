@@ -1,8 +1,19 @@
-name: warren_bot
-services:
-- environment_slug: python
+name: stockyard
+workers:
+- name: warren
+  dockerfile_path: Dockerfile
   github:
+    repo: CyIC/stockyard
     branch: main
     deploy_on_push: true
-    repo: CyIC/warren
-  name: warren_bot
+  instance_count: 1
+  envs:
+  - key: DISCORD_TOKEN
+    scope: RUN_TIME
+    type: SECRET
+  - key: STOCKYARD_DATA_DIR
+    scope: RUN_TIME
+    value: /tmp/stockyard
+  - key: LOGGING_LEVEL
+    scope: RUN_TIME
+    value: INFO
