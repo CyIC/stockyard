@@ -119,8 +119,11 @@ def test_cash_position_tables():
 
     assert rendered.title == "Cash Position"
     body = rendered.body
+    headers = [line for line in body.splitlines() if line.startswith("LINE ITEM")]
+    assert len(headers) == 2  # one per table; the group name never doubles as a header (it is also a row name)
     assert body.splitlines()[0].split() == [
-        "Cash",
+        "LINE",
+        "ITEM",
         "FY2025",
         "FY2024",
         "Difference",

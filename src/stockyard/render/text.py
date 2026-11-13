@@ -132,8 +132,8 @@ def _cash_value(metric: str, value: float | None) -> str:
 def cash_position(result: CashPositionResult) -> RenderedSection:
     """Cash Position: a cash table and a working-capital table, latest vs prior fiscal year and latest quarter."""
     lines = []
-    for group, title in (("cash", "Cash"), ("working_capital", "Working capital")):
-        header = [title, result.latest_label or NA, result.prior_label or NA, "Difference", "% Difference"]
+    for group in ("cash", "working_capital"):
+        header = ["LINE ITEM", result.latest_label or NA, result.prior_label or NA, "Difference", "% Difference"]
         if result.quarter_label:
             header.append(result.quarter_label)
         rows = []
