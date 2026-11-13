@@ -37,6 +37,10 @@ lxml = "^6.0"  # yfinance get_earnings_dates() uses pandas.read_html, which need
 # PEP 735 dependency groups: single source of truth for tooling versions.
 # Consumed by both Poetry (`poetry install --group <name>`) and tox
 # (`dependency_groups = <name>` in tox.ini). Do not duplicate these in tox.ini.
+
+[tool.poetry.group.dev.dependencies]
+bump-my-version = "^1.8.1"
+
 [dependency-groups]
 test = [
     "pytest>=8.1.1,<9",
