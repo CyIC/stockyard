@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased]
+## [1.0.0] - 2026-11-13
 
 Version 1.0 renames the project to **Stockyard** (the Discord bot keeps the name Warren) and rebuilds it as a
 library with two front ends. See `docs/design/v1.md` for the design and decision log.
