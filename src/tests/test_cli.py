@@ -189,3 +189,8 @@ def test_report_level_warnings_are_listed_in_text(capsys, monkeypatch):
     _, out, _ = _run(capsys, "past-eps", "RDDT")
     warnings = out.split("== Warnings ==\n", 1)[1]
     assert warnings.startswith("⚠ 2 complete fiscal years; 4 needed")
+
+
+def test_help_says_how_to_run_warren(capsys):
+    code, out, _ = _run(capsys, "--help")
+    assert code == 0 and "warren" in out and "DISCORD_TOKEN" in out

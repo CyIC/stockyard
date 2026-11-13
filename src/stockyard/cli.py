@@ -46,7 +46,12 @@ def _parser() -> argparse.ArgumentParser:
     common.add_argument("--no-cache", action="store_true", help="always fetch fresh data")
     common.add_argument("-v", "--verbose", action="store_true", help="debug logging on stderr")
 
-    parser = argparse.ArgumentParser(prog="stockyard", description="Stock Selection Guide research from yfinance.")
+    parser = argparse.ArgumentParser(
+        prog="stockyard",
+        description="Stock Selection Guide research from yfinance.",
+        epilog="Warren, the Discord bot, runs separately: set DISCORD_TOKEN, then run `warren` "
+        "(or `python -m stockyard.bot`).",
+    )
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
     commands.add_parser("report", parents=[common], help="every section")
     for command, (_, description) in COMMANDS.items():
