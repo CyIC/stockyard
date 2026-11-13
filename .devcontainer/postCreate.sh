@@ -21,12 +21,10 @@ echo "==> Upgrading pip"
 python -m pip install --quiet --upgrade pip
 
 echo "==> Installing stockyard and its runtime dependencies"
-# Deliberately pip, not `poetry install`. ../Dockerfile documents why: poetry's lock
-# resolver backtracks this dependency graph to pre-3.13 releases that ship no cp313 wheels,
-# so a locked install on Python 3.13 either builds numpy/pandas/scipy from source or fails
-# outright. The production installer stage resolves with pip for the same reason, so this
-# matches what actually ships. Consequence: versions here are freshly resolved and will not
-# match poetry.lock, which is currently ~2 years stale.
+# pip, not `poetry install`, to match the production installer stage in ../Dockerfile, which
+# also resolves with pip. Versions here are freshly resolved, so they can be newer than
+# poetry.lock. (The lock was stale until v1.0 and pinned packages with no cp313 wheels; it now
+# installs cleanly with `poetry install`, and src/tests/test_deployment.py keeps it that way.)
 python -m pip install --editable .
 
 echo "==> Installing the dev toolchain (PEP 735 'dev' group)"

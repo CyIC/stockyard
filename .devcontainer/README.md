@@ -12,12 +12,10 @@ pip-audit                # dependency vulnerabilities
 
 ## Things that are not obvious
 
-**Installed versions do not match `poetry.lock`.** `postCreate.sh` installs with pip, not
-`poetry install`. The root `Dockerfile` explains why: Poetry's lock resolver backtracks this
-dependency graph to pre-3.13 releases that publish no cp313 wheels, so a locked install on
-Python 3.13 builds numpy/pandas/scipy from source or fails. The production installer stage
-resolves with pip for the same reason. The lock is also currently about two years stale, so
-refreshing it is tracked work — until then the container runs newer packages than the lock.
+**Installed versions can differ from `poetry.lock`.** `postCreate.sh` installs with pip, not
+`poetry install`, to match the production image, which also resolves with pip. pip picks the
+newest versions `pyproject.toml` allows, so they can run ahead of the lock. The lock itself is
+current as of v1.0 and installs cleanly with `poetry install` on Python 3.13.
 
 **`.tox/` is a named volume, not the host directory.** The host is Windows and its `.tox/`
 contains Windows launchers Linux cannot execute. The volume shadows it, so the host copy is

@@ -27,6 +27,7 @@ library with two front ends. See `docs/design/v1.md` for the design and decision
     * Package renamed `warren_bot` -> `stockyard`; the bot runs with `warren` or `python -m stockyard.bot`,
       and `python -m stockyard` runs the CLI (ADR-0005)
     * Market data from yfinance instead of Alpha Vantage; no API key needed
+    * Dependencies refreshed for Python 3.13: numpy 2.5, pandas 2.3, matplotlib 3.11, discord.py 2.7
     * Figures are aligned on each company's fiscal-year period-ends (ADR-0001); rows are labelled `FY####`
     * History threshold is 4 complete fiscal years (D17); recent IPOs get partial reports instead of errors
     * Zones are 25 / 50 / 25 (D14)
@@ -58,6 +59,8 @@ library with two front ends. See `docs/design/v1.md` for the design and decision
     * CI linted a non-existent `setup.py` and did not run tox
     * Quarter attribution no longer depends on the ~5 quarters yfinance returns
     * Ticker input is validated before it reaches file paths or Yahoo Finance
+    * `poetry install` failed on Python 3.13: the lock pinned numpy, pandas, matplotlib and seven other
+      packages to versions with no 3.13 wheels
 
 ### Removed
     * Club portfolio tracking and `!club_report` / `!cr` (to be rebuilt in a separate `stockyard.club`)

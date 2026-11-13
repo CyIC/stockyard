@@ -57,8 +57,8 @@ USER root
 WORKDIR /app
 
 # Build the venv and install the wheel. pip resolves the wheel's dependencies to current
-# wheels for this interpreter (cp313) — poetry's lock resolver backtracks this graph to
-# pre-3.13 versions that have no cp313 wheels, so pip's fresh resolution is used here.
+# wheels for this interpreter (cp313). (This was needed while poetry.lock pinned packages with
+# no cp313 wheels; the lock was refreshed for v1.0, so installing from it is now an option.)
 # The *.whl glob decouples this stage from the project version (no WARREN_VERSION coupling).
 RUN python -m venv --copies .venv
 COPY --from=builder /build/dist/*.whl ./
