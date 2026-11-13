@@ -81,3 +81,12 @@ def test_every_locked_package_has_a_python_313_wheel():
         if not any(_installs_on_python_313(file["file"]) for file in package.get("files", []))
     ]
     assert not sdist_only  # `poetry install` would compile these, and old numpy/pandas fail on 3.13
+
+
+def test_lxml_is_a_direct_dependency():
+    # yfinance's get_earnings_dates() parses Yahoo's page with pandas.read_html, which needs lxml, but yfinance does
+    # not declare it. v0.1 only had it through xhtml2pdf -> svglib; recorded fixtures never call read_html.
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    lock = tomllib.loads((ROOT / "poetry.lock").read_text(encoding="utf-8"))
+    assert "lxml" in project["tool"]["poetry"]["dependencies"]
+    assert "lxml" in {package["name"] for package in lock["package"]}

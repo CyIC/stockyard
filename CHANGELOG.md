@@ -61,6 +61,8 @@ library with two front ends. See `docs/design/v1.md` for the design and decision
     * Ticker input is validated before it reaches file paths or Yahoo Finance
     * `poetry install` failed on Python 3.13: the lock pinned numpy, pandas, matplotlib and seven other
       packages to versions with no 3.13 wheels
+    * Every lookup failed with "Missing optional dependency 'lxml'": yfinance needs lxml for earnings dates but
+      does not declare it, and v1 had removed the package that used to pull it in; it is now a direct dependency
 
 ### Removed
     * Club portfolio tracking and `!club_report` / `!cr` (to be rebuilt in a separate `stockyard.club`)
