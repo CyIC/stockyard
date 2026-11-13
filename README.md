@@ -25,7 +25,7 @@
         <img src="images/logo.png" alt="Logo" width="80" height="80">
     </a>
 
-<h3 align="center">Stockyard</h3>
+<h3 align="center">Stockyard v0.1.0</h3>
 
   <p align="center">
     Stock Selection Guide research for the Cypress Investment Club, from the command line or Discord
