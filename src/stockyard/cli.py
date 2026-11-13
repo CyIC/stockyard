@@ -101,7 +101,7 @@ def _run(args) -> int:
                 if report.sections.get(name) is not None:
                     chart_paths += draw(report.sections[name], args.charts)
     except (DataUnavailable, UpstreamError) as error:
-        code, name = EXIT_CODES[type(error)]
+        code, name = next(value for kind, value in EXIT_CODES.items() if isinstance(error, kind))
         return _fail(args, code, name, str(error))
     except Exception as error:  # pylint: disable=broad-exception-caught  # exit 1, no traceback on stdout
         LOGGER.exception("internal error for %s", ticker)

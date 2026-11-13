@@ -11,7 +11,7 @@ import pytest
 
 from stockyard import cli
 from stockyard.data.cache import Cache
-from stockyard.data.errors import DataUnavailable, UpstreamError
+from stockyard.data.errors import DataUnavailable, RateLimited, UpstreamError
 from stockyard.research import report as report_module
 from tests.fixture_replay import load_stock_data
 
@@ -121,6 +121,7 @@ def test_an_invalid_ticker_exits_2(capsys):
     [
         (DataUnavailable("none"), 3, "data_unavailable"),
         (UpstreamError("down"), 4, "upstream_error"),
+        (RateLimited("rate limited"), 4, "upstream_error"),
         (RuntimeError("bug"), 1, "internal_error"),
     ],
 )

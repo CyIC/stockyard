@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from stockyard import bot
-from stockyard.data.errors import DataUnavailable, UpstreamError
+from stockyard.data.errors import DataUnavailable, RateLimited, UpstreamError
 from tests.builders import quarterly_eps, stock_data
 
 SECTION_TITLES = [
@@ -182,3 +182,14 @@ def test_a_missing_token_exits_with_a_clear_message(monkeypatch):
     monkeypatch.setattr(bot.logging_config, "configure_logging", lambda: None)
     with pytest.raises(SystemExit, match="DISCORD_TOKEN"):
         bot.main()
+
+
+def test_a_rate_limit_says_so_and_upstream_failures_are_logged(monkeypatch, caplog):
+    def throttled(ticker, **kwargs):
+        raise RateLimited("fetching IBM: Yahoo Finance rate limited the request")
+
+    monkeypatch.setattr(bot, "fetch_stock_data", throttled)
+    with caplog.at_level("WARNING", logger="stockyard.bot"):
+        reply = _replies(_handle(_message("!sr ibm")))[-1]
+    assert "rate-limiting" in reply and "few minutes" in reply
+    assert any("rate limited" in record.getMessage() for record in caplog.records)

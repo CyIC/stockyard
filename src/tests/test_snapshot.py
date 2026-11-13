@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """Tests for StockData and fetch_stock_data (design §5.1)."""
 import dataclasses
+import datetime
 
 import pandas as pd
 import pytest
+from yfinance.exceptions import YFRateLimitError
 
-from stockyard.data.errors import DataUnavailable, UpstreamError
+from stockyard.data import snapshot
+from stockyard.data.cache import Cache
+from stockyard.data.errors import DataUnavailable, RateLimited, UpstreamError
 from stockyard.data.snapshot import StockData, fetch_stock_data
 from stockyard.data.tickers import InvalidTicker
 from tests.fakes import FakeTicker, statement
@@ -185,3 +189,53 @@ def test_errors_raised_by_yfinance_become_upstream_errors(broken):
 def test_error_types_are_distinguishable_from_each_other():
     assert not issubclass(DataUnavailable, UpstreamError)
     assert not issubclass(UpstreamError, DataUnavailable)
+
+
+class _Watch:
+    """Stands in for RateLimitWatch: reports whether the fetch since begin() was rate limited."""
+
+    def __init__(self, will_hit):
+        self.will_hit, self.hit, self.began = will_hit, None, 0
+
+    def begin(self):
+        self.began += 1
+        self.hit = self.will_hit
+
+
+def test_a_rate_limit_yfinance_swallowed_is_reported_and_never_cached(tmp_path):
+    """yfinance turns some 429s into empty statements; the watch still saw them, so the fetch fails."""
+    cache = Cache(tmp_path, today=datetime.date(2026, 11, 13))
+    fake = _fake()
+    with pytest.raises(RateLimited, match="rate limited"):
+        fetch_stock_data("IBM", ticker_factory=lambda symbol: fake, cache=cache, rate_limits=_Watch(True))
+    assert cache.load("IBM") is None
+    assert issubclass(RateLimited, UpstreamError)  # still exit 4 / upstream_error for the CLI and agents
+
+
+def test_a_rate_limit_yfinance_raises_is_reported():
+    class _Throttled(FakeTicker):
+        def history(self, **kwargs):
+            raise YFRateLimitError()
+
+    fake = _Throttled("IBM", earnings_dates=_earnings_dates(), history=_history())
+    with pytest.raises(RateLimited, match="rate limited") as caught:
+        fetch_stock_data("IBM", ticker_factory=lambda symbol: fake, rate_limits=_Watch(False))
+    assert isinstance(caught.value.__cause__, YFRateLimitError)
+
+
+def test_without_a_rate_limit_the_fetch_is_normal():
+    watch = _Watch(False)
+    data = fetch_stock_data("IBM", ticker_factory=lambda symbol: _fake(), rate_limits=watch)
+    assert isinstance(data, StockData) and watch.began == 1
+
+
+def test_live_fetches_go_through_the_rate_limit_watch(monkeypatch):
+    sessions = []
+
+    def ticker(symbol, session=None):
+        sessions.append(session)
+        return _fake()
+
+    monkeypatch.setattr(snapshot.yf, "Ticker", ticker)
+    fetch_stock_data("IBM")
+    assert isinstance(sessions[0], snapshot.RateLimitWatch)

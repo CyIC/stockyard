@@ -7,8 +7,8 @@ class DataUnavailable(Exception):
 
 
 class UpstreamError(Exception):
-    """The data source raised while fetching (network failure, rate limiting, API change).
+    """The data source failed while fetching (network failure, rate limiting, API change)."""
 
-    yfinance often logs failures and returns empty frames instead of raising; those surface as
-    DataUnavailable, so this error is only guaranteed for failures yfinance raises.
-    """
+
+class RateLimited(UpstreamError):
+    """Yahoo Finance answered 429 Too Many Requests, whether yfinance raised it or swallowed it."""
