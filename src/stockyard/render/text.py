@@ -46,7 +46,9 @@ def _warnings(warnings) -> list[str]:
 
 
 def _per_share(value: float | None) -> str:
-    return NA if value is None else f"${value:,.2f}"
+    if value is None:
+        return NA
+    return f"-${-value:,.2f}" if value < 0 else f"${value:,.2f}"
 
 
 def _growth(title: str, result, value_format, increase_label: str) -> RenderedSection:

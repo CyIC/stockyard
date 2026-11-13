@@ -248,3 +248,10 @@ def test_fundamentals_table_current_year_and_history():
     assert "FY2024" in body and "2024-12-31" in body and "$62,753,000,000" in body and "$10.33" in body
     assert "Current FY2026: 3 of 4 quarters reported, EPS to date $7.79" in body
     assert "1 complete fiscal year(s); history insufficient (4 needed)" in body
+
+
+def test_negative_per_share_figures_put_the_sign_before_the_dollar():
+    rows = (CashRow("net_cash_per_share", "cash", -43.14, -38.1, -5.04, -0.1322, -48.4),)
+    body = text.cash_position(CashPositionResult("FY2025", "FY2024", "Q 2026-09-30", rows, ())).body
+    line = next(line for line in body.splitlines() if line.startswith("Net cash per share"))
+    assert line.split()[4:7] == ["-$43.14", "-$38.10", "-$5.04"] and "$-" not in body
